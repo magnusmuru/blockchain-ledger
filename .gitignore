@@ -1,7 +1,7 @@
-.idea
+.idea/
 *.iml
 
-.gradle
+.gradle/
 
-ledger-api/build
-ledger-api/out
+ledger-api/build/
+ledger-api/out/
