@@ -1,14 +1,12 @@
 package ee.taltech.ledger.api.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import ee.taltech.ledger.api.DTO.BlockDTO;
 import ee.taltech.ledger.api.models.Block;
 import ee.taltech.ledger.api.models.IPAddress;
 import ee.taltech.ledger.api.models.Ledger;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
+import okhttp3.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,7 +23,7 @@ public class BlockService {
     return (string.equals(apiKey));
   }
 
-  private String blockPassUrl(IPAddress ipAddress) {
+  private String blockSharingUrl(IPAddress ipAddress) {
     return String.format("http://%s:%s/block/%s", ipAddress.getIp(), ipAddress.getPort(), apiKey);
   }
 
@@ -60,7 +58,7 @@ public class BlockService {
     return null;
   }
 
-  public void generateNewTransaction(Ledger ledger, BlockDTO blockDTO) {
+  public void generateNewTransaction(Ledger ledger, BlockDTO blockDTO) throws IOException {
     Block transactionBlock = Block.builder()
         .transaction(blockDTO.getTransaction())
         .message(blockDTO.getMessage())
@@ -71,16 +69,24 @@ public class BlockService {
     } else {
       transactionBlock.setHash(ledger.getLastHash());
     }
-    ledger.setLastHash(hashingService.generateSHA256Hash(transactionBlock));
-    ledger.addBlock(transactionBlock);
+    this.shareBlock(ledger, transactionBlock);
   }
 
-  public boolean insertNewBlock(Ledger ledger, Block block) throws IOException, InterruptedException {
-    if (ledger.getLastHash().equals(block.getHash()) || hashingService.genesisHash().equals(block.getHash())) {
+  public void shareBlock(Ledger ledger, Block block) throws IOException {
+    if (!ledger.getBlocks().containsKey(block.getHash())) {
+      ObjectMapper mapper = new ObjectMapper();
       ledger.setLastHash(hashingService.generateSHA256Hash(block));
       ledger.addBlock(block);
-      return true;
+      for (IPAddress address : ledger.getIpAddresses()) {
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        RequestBody requestBody = RequestBody.create(JSON, mapper.writeValueAsString(block));
+        Request postRequest = new Request.Builder()
+            .url(blockSharingUrl(address))
+            .post(requestBody)
+            .build();
+
+        client.newCall(postRequest).execute();
+      }
     }
-    return false;
   }
 }

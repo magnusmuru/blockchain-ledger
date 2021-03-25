@@ -2,6 +2,7 @@ package ee.taltech.ledger.api;
 
 import com.google.gson.Gson;
 import ee.taltech.ledger.api.DTO.BlockDTO;
+import ee.taltech.ledger.api.models.Block;
 import ee.taltech.ledger.api.models.IPAddress;
 import ee.taltech.ledger.api.models.Ledger;
 import ee.taltech.ledger.api.models.Status;
@@ -91,7 +92,9 @@ public class Application {
 
     path("/block", () -> {
       post("/:apikey", ((request, response) -> {
-        return "hello";
+        Block block = new Gson().fromJson(request.body(), Block.class);
+        blockService.shareBlock(ledger, block);
+        return "";
       }));
     });
 
