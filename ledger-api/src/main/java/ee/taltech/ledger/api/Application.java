@@ -8,7 +8,6 @@ import ee.taltech.ledger.api.models.Ledger;
 import ee.taltech.ledger.api.models.Status;
 import ee.taltech.ledger.api.services.BlockService;
 import ee.taltech.ledger.api.services.BootService;
-import ee.taltech.ledger.api.services.HashingService;
 import ee.taltech.ledger.api.services.IPService;
 
 import java.io.IOException;
@@ -24,6 +23,7 @@ public class Application {
     BootService bootService = new BootService();
     BlockService blockService = new BlockService();
 
+    /*
     BlockDTO testBlock = BlockDTO.builder()
         .message("I like trains")
         .transaction(50).build();
@@ -36,6 +36,7 @@ public class Application {
     blockService.generateNewTransaction(ledger, testBlock);
     blockService.generateNewTransaction(ledger, testBlock2);
     blockService.generateNewTransaction(ledger, testBlock3);
+    */
 
     path("/addr", () -> {
       get("", ((request, response) -> {
