@@ -2,7 +2,6 @@ package ee.taltech.ledger.api;
 
 import com.google.gson.Gson;
 import ee.taltech.ledger.api.DTO.BlockDTO;
-import ee.taltech.ledger.api.models.Block;
 import ee.taltech.ledger.api.models.IPAddress;
 import ee.taltech.ledger.api.models.Ledger;
 import ee.taltech.ledger.api.models.Status;
@@ -23,7 +22,7 @@ public class Application {
     BootService bootService = new BootService();
     BlockService blockService = new BlockService();
 
-    /*
+
     BlockDTO testBlock = BlockDTO.builder()
         .message("I like trains")
         .transaction(50).build();
@@ -36,7 +35,7 @@ public class Application {
     blockService.generateNewTransaction(ledger, testBlock);
     blockService.generateNewTransaction(ledger, testBlock2);
     blockService.generateNewTransaction(ledger, testBlock3);
-    */
+
 
     path("/addr", () -> {
       get("", ((request, response) -> {
@@ -80,37 +79,19 @@ public class Application {
       post("", ((request, response) -> {
         response.type("application/json");
         BlockDTO blockDTO = new Gson().fromJson(request.body(), BlockDTO.class);
-        Block block = blockService.generateNewTransaction(ledger, blockDTO);
-        response.status(200);
-        ipService.shareBlock(block, ledger);
-        return new Gson().toJsonTree(Status.builder()
-            .statusType("Success")
-            .statusMessage("Transaction added to ledger").build());
-
+        blockService.generateNewTransaction(ledger, blockDTO);
+        {
+          response.status(200);
+          return new Gson().toJsonTree(Status.builder()
+              .statusType("Success")
+              .statusMessage("Transaction added to ledger").build());
+        }
       }));
     });
 
     path("/block", () -> {
       post("/:apikey", ((request, response) -> {
-        if (ipService.compareAPIKey(request.params(":apikey"))) {
-          Block block = new Gson().fromJson(request.body(), Block.class);
-          if (blockService.insertNewBlock(ledger, block)) {
-            response.status(200);
-            return new Gson().toJsonTree(Status.builder()
-                .statusType("Success")
-                .statusMessage("Transaction added to ledger").build());
-          } else {
-            response.status(400);
-            return new Gson().toJsonTree(Status.builder()
-                .statusType("Error")
-                .statusMessage("Transaction failed"));
-          }
-        } else {
-          response.status(401);
-          return new Gson().toJsonTree(Status.builder()
-              .statusType("Error")
-              .statusMessage("Bad API Key"));
-        }
+        return "hello";
       }));
     });
 
