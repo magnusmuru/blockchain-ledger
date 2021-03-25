@@ -23,21 +23,6 @@ public class Application {
     BootService bootService = new BootService();
     BlockService blockService = new BlockService();
 
-
-    BlockDTO testBlock = BlockDTO.builder()
-        .message("I like trains")
-        .transaction(50).build();
-    BlockDTO testBlock2 = BlockDTO.builder()
-        .message("moonboys")
-        .transaction(67).build();
-    BlockDTO testBlock3 = BlockDTO.builder()
-        .message("Viva las vegas")
-        .transaction(800).build();
-    blockService.generateNewTransaction(ledger, testBlock);
-    blockService.generateNewTransaction(ledger, testBlock2);
-    blockService.generateNewTransaction(ledger, testBlock3);
-
-
     path("/addr", () -> {
       get("", ((request, response) -> {
         response.type("application/json");
