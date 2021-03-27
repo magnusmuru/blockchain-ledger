@@ -1,7 +1,7 @@
 package ee.taltech.ledger.api.services;
 
 import com.google.common.hash.Hashing;
-import ee.taltech.ledger.api.models.Block;
+import ee.taltech.ledger.api.model.Block;
 
 import java.nio.charset.StandardCharsets;
 

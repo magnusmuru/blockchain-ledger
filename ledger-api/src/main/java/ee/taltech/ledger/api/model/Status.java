@@ -1,4 +1,4 @@
-package ee.taltech.ledger.api.models;
+package ee.taltech.ledger.api.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

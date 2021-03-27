@@ -1,7 +1,7 @@
 package ee.taltech.ledger.api.services;
 
-import ee.taltech.ledger.api.models.IPAddress;
-import ee.taltech.ledger.api.models.Ledger;
+import ee.taltech.ledger.api.model.IPAddress;
+import ee.taltech.ledger.api.model.Ledger;
 
 import java.io.IOException;
 

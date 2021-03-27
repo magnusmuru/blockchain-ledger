@@ -1,9 +1,11 @@
-package ee.taltech.ledger.api.models;
+package ee.taltech.ledger.api.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.Objects;
 
 @Getter
 @Builder
@@ -20,5 +22,10 @@ public class IPAddress {
     } else {
       return super.equals(obj);
     }
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(ip, port);
   }
 }

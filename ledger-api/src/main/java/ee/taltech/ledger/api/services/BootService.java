@@ -1,8 +1,8 @@
 package ee.taltech.ledger.api.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import ee.taltech.ledger.api.models.IPAddress;
-import ee.taltech.ledger.api.models.Ledger;
+import ee.taltech.ledger.api.model.IPAddress;
+import ee.taltech.ledger.api.model.Ledger;
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -28,13 +28,15 @@ public class BootService {
       Request request = new Request.Builder().url(ipRequestURL(ipAddress)).build();
       Response response = client.newCall(request).execute();
       if (response.isSuccessful()) {
-        newIpAddresses.addAll(mapper.readValue(response.body().byteStream(), mapper.getTypeFactory().constructCollectionType(List.class, IPAddress.class)));
+        newIpAddresses.addAll(mapper.readValue(response.body().byteStream(),
+            mapper.getTypeFactory().constructCollectionType(List.class, IPAddress.class)));
       }
     }
     for (IPAddress address : newIpAddresses) {
       if (!ledger.getIpAddresses().contains(address)) {
         ledger.addIPAddress(address);
-        Request postRequest = new Request.Builder().url(ipRequestURL(address)).post(new FormBody.Builder().build()).build();
+        Request postRequest = new Request.Builder().url(ipRequestURL(address))
+            .post(new FormBody.Builder().build()).build();
         Response postResponse = client.newCall(postRequest).execute();
         if (postResponse.isSuccessful()) {
           System.out.println("Two way binding successful");

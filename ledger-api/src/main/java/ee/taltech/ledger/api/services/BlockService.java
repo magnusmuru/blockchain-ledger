@@ -1,11 +1,10 @@
 package ee.taltech.ledger.api.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import ee.taltech.ledger.api.DTO.BlockDTO;
-import ee.taltech.ledger.api.models.Block;
-import ee.taltech.ledger.api.models.IPAddress;
-import ee.taltech.ledger.api.models.Ledger;
+import ee.taltech.ledger.api.dto.BlockDTO;
+import ee.taltech.ledger.api.model.Block;
+import ee.taltech.ledger.api.model.IPAddress;
+import ee.taltech.ledger.api.model.Ledger;
 import okhttp3.*;
 
 import java.io.IOException;
@@ -14,18 +13,11 @@ import java.util.List;
 import java.util.Map;
 
 public class BlockService {
+  private static final String API_KEY = "84c1226e-8718-4ba7-8088-d6d3b2640d9d";
+
   private final HashingService hashingService = new HashingService();
   private final OkHttpClient client = new OkHttpClient();
 
-  private final String apiKey = "84c1226e-8718-4ba7-8088-d6d3b2640d9d";
-
-  public boolean compareAPIKey(String string) {
-    return (string.equals(apiKey));
-  }
-
-  private String blockSharingUrl(IPAddress ipAddress) {
-    return String.format("http://%s:%s/block/%s", ipAddress.getIp(), ipAddress.getPort(), apiKey);
-  }
 
   public List<Block> blockChainLedgerFromBlock(Ledger ledger, String hash) {
     List<Block> blockChain = new ArrayList<>();
@@ -78,8 +70,8 @@ public class BlockService {
       ledger.setLastHash(hashingService.generateSHA256Hash(block));
       ledger.addBlock(block);
       for (IPAddress address : ledger.getIpAddresses()) {
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        RequestBody requestBody = RequestBody.create(JSON, mapper.writeValueAsString(block));
+        MediaType json = MediaType.parse("application/json; charset=utf-8");
+        RequestBody requestBody = RequestBody.create(json, mapper.writeValueAsString(block));
         Request postRequest = new Request.Builder()
             .url(blockSharingUrl(address))
             .post(requestBody)
@@ -88,5 +80,9 @@ public class BlockService {
         client.newCall(postRequest).execute();
       }
     }
+  }
+
+  private String blockSharingUrl(IPAddress ipAddress) {
+    return String.format("http://%s:%s/block/%s", ipAddress.getIp(), ipAddress.getPort(), API_KEY);
   }
 }

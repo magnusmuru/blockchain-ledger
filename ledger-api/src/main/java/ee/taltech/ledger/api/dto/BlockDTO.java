@@ -1,4 +1,4 @@
-package ee.taltech.ledger.api.DTO;
+package ee.taltech.ledger.api.dto;
 
 import lombok.*;
 

@@ -1,13 +1,13 @@
-package ee.taltech.ledger.api.models;
+package ee.taltech.ledger.api.model;
 
 import lombok.*;
 
 @Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class Block {
-  @Setter
   private String hash;
   private int transaction;
   private String message;

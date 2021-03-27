@@ -1,4 +1,4 @@
-package ee.taltech.ledger.api.models;
+package ee.taltech.ledger.api.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -14,9 +14,12 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Ledger {
+
   @Setter
   private List<IPAddress> ipAddresses = new ArrayList<>();
-  private Map<String, Block> blocks = new HashMap<>();
+
+  private final Map<String, Block> blocks = new HashMap<>();
+
   @Setter
   private String lastHash;
 

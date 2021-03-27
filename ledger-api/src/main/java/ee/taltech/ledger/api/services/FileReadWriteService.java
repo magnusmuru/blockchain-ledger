@@ -1,6 +1,6 @@
 package ee.taltech.ledger.api.services;
 
-import ee.taltech.ledger.api.models.IPAddress;
+import ee.taltech.ledger.api.model.IPAddress;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,10 +13,10 @@ import java.util.Arrays;
 import java.util.List;
 
 public class FileReadWriteService {
-  private final String IPFile = "./data/ip.txt";
+  private static final String IP_FILE = "./data/ip.txt";
 
   public List<IPAddress> getIPs() throws IOException {
-    Path path = Paths.get(IPFile);
+    Path path = Paths.get(IP_FILE);
     List<IPAddress> output = new ArrayList<>();
 
     if (path.toFile().isFile()) {
@@ -31,12 +31,10 @@ public class FileReadWriteService {
   }
 
   public void writeIPs(List<IPAddress> ipList) {
-    try {
-      FileWriter writer = new FileWriter(IPFile);
+    try (FileWriter writer = new FileWriter(IP_FILE)) {
       for (IPAddress ip : ipList) {
         writer.write(ip.getIp() + ":" + ip.getPort() + "\n");
       }
-      writer.close();
     } catch (Exception e) {
       System.out.println(Arrays.toString(e.getStackTrace()));
     }
