@@ -11,8 +11,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class FileReadWriteService {
+  private static final Logger LOGGER = Logger.getLogger(FileReadWriteService.class.getName());
+
   private static final String IP_FILE = "./data/ip.txt";
 
   public List<IPAddress> getIPs() throws IOException {
@@ -21,7 +24,7 @@ public class FileReadWriteService {
 
     if (path.toFile().isFile()) {
       List<String> ips = Files.readAllLines(path, StandardCharsets.UTF_8);
-      if (ips.size() > 0 && !ips.get(0).equals("")) {
+      if (!ips.isEmpty() && !ips.get(0).equals("")) {
         for (String ipAddress : ips) {
           List<String> split = Arrays.asList(ipAddress.split(":"));
           output.add(IPAddress.builder().ip(split.get(0)).port(split.get(1)).build());
@@ -38,7 +41,7 @@ public class FileReadWriteService {
         writer.write(ip.getIp() + ":" + ip.getPort() + "\n");
       }
     } catch (Exception e) {
-      System.out.println(Arrays.toString(e.getStackTrace()));
+      LOGGER.severe(Arrays.toString(e.getStackTrace()));
     }
   }
 }

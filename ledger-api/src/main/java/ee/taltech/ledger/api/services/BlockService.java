@@ -5,7 +5,10 @@ import ee.taltech.ledger.api.dto.BlockDTO;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,7 +39,7 @@ public class BlockService {
       rootHash = hashingService.generateSHA256Hash(block);
     }
 
-    if (blockChain.size() > 0) {
+    if (!blockChain.isEmpty()) {
       return blockChain;
     } else {
       return null;
