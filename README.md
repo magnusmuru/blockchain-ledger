@@ -35,4 +35,7 @@ Lisab uue tehingu ledgerisse ning käskluse `POST http://hostip:port/block` edas
 
 
 #### JAR faili käivitamine
-- Käivitada käsklus java -jar ledger-api.jar
+- Käivitada käsklus
+```
+java -jar ledger-api\build\libs\ledger-api-all.jar
+```
