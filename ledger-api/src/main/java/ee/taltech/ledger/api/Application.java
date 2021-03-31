@@ -31,8 +31,9 @@ public class Application {
         return new Gson().toJson(ipAddressList);
       }));
       post("", ((request, response) -> {
-        List<String> split = Arrays.asList(request.ip().split(":"));
-        IPAddress newAddress = IPAddress.builder().ip(split.get(0)).port(split.get(1)).build();
+        String ip = String.valueOf(request.ip());
+        String port = String.valueOf(request.port());
+        IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
         if (!ledger.getIpAddresses().contains(newAddress)) {
           ipService.writeIPAddressesToFileAndLedger(ledger, newAddress);
           response.body("Two way binding achieved");

@@ -21,11 +21,12 @@ public class FileReadWriteService {
 
     if (path.toFile().isFile()) {
       List<String> ips = Files.readAllLines(path, StandardCharsets.UTF_8);
-      for (String ipAddress : ips) {
-        List<String> split = Arrays.asList(ipAddress.split(":"));
-        output.add(IPAddress.builder().ip(split.get(0)).port(split.get(1)).build());
+      if (ips.size() > 0 && !ips.get(0).equals("")) {
+        for (String ipAddress : ips) {
+          List<String> split = Arrays.asList(ipAddress.split(":"));
+          output.add(IPAddress.builder().ip(split.get(0)).port(split.get(1)).build());
+        }
       }
-
     }
     return output;
   }
