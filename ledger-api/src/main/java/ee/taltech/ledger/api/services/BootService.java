@@ -14,8 +14,10 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 public class BootService {
+  private static final Logger LOGGER = Logger.getLogger(BootService.class.getName());
 
   private final OkHttpClient client = new OkHttpClient();
   private final ObjectMapper mapper = new ObjectMapper();
@@ -47,12 +49,13 @@ public class BootService {
             .post(new FormBody.Builder().build()).build();
         Response postResponse = client.newCall(postRequest).execute();
         if (postResponse.isSuccessful()) {
-          System.out.println("Two way binding successful");
+          LOGGER.info("Two way binding successful");
           Request blockRequest = new Request.Builder().url(blockRequestUrl(address)).build();
           Response blockResponse = client.newCall(blockRequest).execute();
           if (blockResponse.isSuccessful()) {
             List<Block> chainBlocks = new ArrayList<>();
-            chainBlocks.addAll(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(), mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
+            chainBlocks.addAll(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(),
+                mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
             for (Block block : chainBlocks) {
               if (!ledger.getBlocks().containsKey(block.getHash())) {
                 ledger.addBlock(block);
