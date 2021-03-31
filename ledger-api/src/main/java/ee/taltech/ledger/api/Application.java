@@ -12,7 +12,6 @@ import ee.taltech.ledger.api.services.BootService;
 import ee.taltech.ledger.api.services.IPService;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 import static spark.Spark.*;
@@ -36,6 +35,9 @@ public class Application {
         IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
         if (!ledger.getIpAddresses().contains(newAddress)) {
           ipService.writeIPAddressesToFileAndLedger(ledger, newAddress);
+          response.body("Two way binding achieved");
+          response.status(200);
+        } else if (ledger.getIpAddresses().contains(newAddress)) {
           response.body("Two way binding achieved");
           response.status(200);
         } else {
