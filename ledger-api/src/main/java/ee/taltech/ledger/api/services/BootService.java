@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
-import okhttp3.*;
+import okhttp3.FormBody;
+import okhttp3.Response;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -36,6 +37,7 @@ public class BootService extends BaseService {
         LOGGER.info("BootService.runStartup: Two way binding successful");
         addNewBlocks(ledger, blockResponse);
       }
+      findLastHashOnBootBlockchainIngest(ledger);
     }
   }
 
@@ -56,6 +58,8 @@ public class BootService extends BaseService {
             .filter(ip -> !ip.equals(local))
             .collect(Collectors.toList())
     );
+  }
+
   private void findLastHashOnBootBlockchainIngest(Ledger ledger) {
     HashingService hashingService = new HashingService();
     String genesisHash = hashingService.genesisHash();
