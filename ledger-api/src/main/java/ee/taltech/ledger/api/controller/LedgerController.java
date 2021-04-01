@@ -22,18 +22,22 @@ public class LedgerController {
   private static final Logger LOGGER = Logger.getLogger(LedgerController.class.getName());
 
   private final Ledger ledger;
+  private final String localPort;
   private final IPService ipService;
   private final BlockService blockService;
   private BootService bootService;
 
-  public LedgerController() {
+  public LedgerController(String port) {
     this.ledger = new Ledger();
+    this.localPort = port;
     this.ipService = new IPService();
     this.blockService = new BlockService();
     this.bootService = new BootService();
   }
 
   public void initialize() {
+    port(Integer.parseInt(this.localPort));
+    LOGGER.log(Level.INFO, "LedgerController.initialize - initializing node on port {0}", localPort);
     mapAddrRoutes();
     mapGetBlocksRoutes();
     mapGetDataRoutes();
@@ -108,9 +112,9 @@ public class LedgerController {
 
   private void startupBootService() {
     try {
-      bootService.runStartup(ledger, ipService);
+      bootService.runStartup(ledger, ipService, localPort);
     } catch (IOException e) {
-      LOGGER.log(Level.SEVERE, "Error in startupBootService: {}", e.getMessage());
+      LOGGER.log(Level.SEVERE, "Error in startupBootService: {0}", e.getMessage());
     }
     bootService = null; //after use this is not required so java garbage collection will delete it
   }

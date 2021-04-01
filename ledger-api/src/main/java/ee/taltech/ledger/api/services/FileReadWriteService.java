@@ -27,7 +27,7 @@ public class FileReadWriteService {
       List<String> ips = Files.readAllLines(path, StandardCharsets.UTF_8);
       if (!ips.isEmpty() && !ips.get(0).equals("")) {
         for (String ipAddress : ips) {
-          LOGGER.log(Level.INFO, "FileReadWriteService.getIPs - adding IP to output: {}", ipAddress);
+          LOGGER.log(Level.INFO, "FileReadWriteService.getIPs - adding IP to output: {0}", ipAddress);
           IPAddress address = IPAddress.parseString(ipAddress);
           output.add(IPAddress.builder().ip(address.getIp()).port(address.getPort()).build());
         }

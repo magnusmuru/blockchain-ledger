@@ -20,14 +20,14 @@ public class BootService extends BaseService {
 
   private final ObjectMapper mapper = new ObjectMapper();
 
-  public void runStartup(Ledger ledger, IPService ipService) throws IOException {
-    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port("4567").build();
+  public void runStartup(Ledger ledger, IPService ipService, String localPort) throws IOException {
+    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     ipService.updateIPAddressesFromFile(ledger);
     List<IPAddress> newIpAddresses = new ArrayList<>(ledger.getIpAddresses());
     for (IPAddress ipAddress : ledger.getIpAddresses()) {
       Response response = sendGetRequest(ipRequestURL(ipAddress));
       if (response.isSuccessful()) {
-        addNewIpAddresses(newIpAddresses, response);
+        addNewIpAddresses(newIpAddresses, response, localPort);
       }
     }
     for (IPAddress address : newIpAddresses) {
@@ -58,8 +58,8 @@ public class BootService extends BaseService {
     }
   }
 
-  private void addNewIpAddresses(List<IPAddress> newIpAddresses, Response response) throws IOException {
-    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port("4567").build();
+  private void addNewIpAddresses(List<IPAddress> newIpAddresses, Response response, String localPort) throws IOException {
+    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     List<IPAddress> ipAddresses = mapper.readValue(Objects.requireNonNull(response.body()).byteStream(),
         mapper.getTypeFactory().constructCollectionType(List.class, IPAddress.class));
     newIpAddresses.addAll(
