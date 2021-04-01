@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
-import okhttp3.FormBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import okhttp3.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -16,22 +13,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
 
-public class BootService {
+public class BootService extends BaseService {
   private static final Logger LOGGER = Logger.getLogger(BootService.class.getName());
 
-  private final OkHttpClient client = new OkHttpClient();
   private final ObjectMapper mapper = new ObjectMapper();
 
-  private String ipRequestURL(IPAddress ipAddress) {
-    return String.format("http://%s:%s/addr", ipAddress.getIp(), ipAddress.getPort());
-  }
-
-  private String blockRequestUrl(IPAddress ipAddress) {
-    return String.format("http://%s:%s/getblocks", ipAddress.getIp(), ipAddress.getPort());
-  }
-
   public void runStartup(Ledger ledger, IPService ipService) throws IOException {
-    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port("4567").build();
     ipService.updateIPAddressesFromFile(ledger);
     List<IPAddress> newIpAddresses = new ArrayList<>(ledger.getIpAddresses());
     for (IPAddress ipAddress : ledger.getIpAddresses()) {
