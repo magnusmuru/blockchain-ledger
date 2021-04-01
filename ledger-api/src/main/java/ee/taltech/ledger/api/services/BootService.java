@@ -61,10 +61,25 @@ public class BootService {
                 ledger.addBlock(block);
               }
             }
+            findLastHashOnBootBlockchainIngest(ledger);
           }
         }
       }
 
+    }
+  }
+
+  private void findLastHashOnBootBlockchainIngest(Ledger ledger) {
+    HashingService hashingService = new HashingService();
+    String genesisHash = hashingService.genesisHash();
+    if (ledger.getBlocks().containsKey(genesisHash)) {
+      String hash = hashingService.generateSHA256Hash(ledger.getBlocks().get(genesisHash));
+      while (ledger.getBlocks().containsKey(hash)) {
+        hash = hashingService.generateSHA256Hash(ledger.getBlocks().get(hash));
+      }
+      ledger.setLastHash(hash);
+    } else {
+      ledger.setLastHash(genesisHash);
     }
   }
 }
