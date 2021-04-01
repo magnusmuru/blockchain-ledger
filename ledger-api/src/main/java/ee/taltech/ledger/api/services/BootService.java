@@ -21,6 +21,7 @@ public class BootService extends BaseService {
   private final ObjectMapper mapper = new ObjectMapper();
 
   public void runStartup(Ledger ledger, IPService ipService) throws IOException {
+    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port("4567").build();
     ipService.updateIPAddressesFromFile(ledger);
     List<IPAddress> newIpAddresses = new ArrayList<>(ledger.getIpAddresses());
     for (IPAddress ipAddress : ledger.getIpAddresses()) {
@@ -30,23 +31,31 @@ public class BootService extends BaseService {
       }
     }
     for (IPAddress address : newIpAddresses) {
-      ledger.addIPAddress(address);
-      Response postResponse = sendPostRequest(ipRequestURL(address), new FormBody.Builder().build());
-      Response blockResponse = sendGetRequest(blockRequestUrl(address));
-      if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
-        LOGGER.info("BootService.runStartup: Two way binding successful");
-        addNewBlocks(ledger, blockResponse);
+      if (!ledger.getIpAddresses().contains(address)) {
+        ledger.addIPAddress(address);
       }
-      findLastHashOnBootBlockchainIngest(ledger);
+      if (!address.getIp().equals(local.getIp())) {
+        Response postResponse = sendPostRequest(ipRequestURL(address), new FormBody.Builder().build());
+        Response blockResponse = sendGetRequest(blockRequestUrl(address));
+        if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
+          LOGGER.info("BootService.runStartup: Two way binding successful");
+          addNewBlocks(ledger, blockResponse);
+        }
+      }
     }
+    findLastHashOnBootBlockchainIngest(ledger);
   }
 
   private void addNewBlocks(Ledger ledger, Response blockResponse) throws IOException {
-    List<Block> chainBlocks = new ArrayList<>(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(),
-        mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
-    chainBlocks.stream()
-        .filter(block -> !ledger.getBlocks().containsKey(block.getHash()))
-        .forEach(ledger::addBlock);
+    try {
+      List<Block> chainBlocks = new ArrayList<>(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(),
+          mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
+      chainBlocks.stream()
+          .filter(block -> !ledger.getBlocks().containsKey(block.getHash()))
+          .forEach(ledger::addBlock);
+    } catch (NullPointerException e) {
+      LOGGER.info("Bootservice.runStartup: ledger has no blocks to ingest");
+    }
   }
 
   private void addNewIpAddresses(List<IPAddress> newIpAddresses, Response response) throws IOException {
