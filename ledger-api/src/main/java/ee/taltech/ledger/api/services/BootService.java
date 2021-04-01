@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class BootService extends BaseService {
   private static final Logger LOGGER = Logger.getLogger(BootService.class.getName());
@@ -22,36 +23,38 @@ public class BootService extends BaseService {
     ipService.updateIPAddressesFromFile(ledger);
     List<IPAddress> newIpAddresses = new ArrayList<>(ledger.getIpAddresses());
     for (IPAddress ipAddress : ledger.getIpAddresses()) {
-      Request request = new Request.Builder().url(ipRequestURL(ipAddress)).build();
-      Response response = client.newCall(request).execute();
+      Response response = sendGetRequest(ipRequestURL(ipAddress));
       if (response.isSuccessful()) {
-        newIpAddresses.addAll(mapper.readValue(Objects.requireNonNull(response.body()).byteStream(),
-            mapper.getTypeFactory().constructCollectionType(List.class, IPAddress.class)));
+        addNewIpAddresses(newIpAddresses, response);
       }
     }
     for (IPAddress address : newIpAddresses) {
-      if (!address.equals(local)) {
-        ledger.addIPAddress(address);
-        Request postRequest = new Request.Builder().url(ipRequestURL(address))
-            .post(new FormBody.Builder().build()).build();
-        Response postResponse = client.newCall(postRequest).execute();
-        if (postResponse.isSuccessful()) {
-          LOGGER.info("Two way binding successful");
-          Request blockRequest = new Request.Builder().url(blockRequestUrl(address)).build();
-          Response blockResponse = client.newCall(blockRequest).execute();
-          if (blockResponse.isSuccessful()) {
-            List<Block> chainBlocks = new ArrayList<>();
-            chainBlocks.addAll(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(),
-                mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
-            for (Block block : chainBlocks) {
-              if (!ledger.getBlocks().containsKey(block.getHash())) {
-                ledger.addBlock(block);
-              }
-            }
-          }
-        }
+      ledger.addIPAddress(address);
+      Response postResponse = sendPostRequest(ipRequestURL(address), new FormBody.Builder().build());
+      Response blockResponse = sendGetRequest(blockRequestUrl(address));
+      if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
+        LOGGER.info("BootService.runStartup: Two way binding successful");
+        addNewBlocks(ledger, blockResponse);
       }
-
     }
+  }
+
+  private void addNewBlocks(Ledger ledger, Response blockResponse) throws IOException {
+    List<Block> chainBlocks = new ArrayList<>(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(),
+        mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
+    chainBlocks.stream()
+        .filter(block -> !ledger.getBlocks().containsKey(block.getHash()))
+        .forEach(ledger::addBlock);
+  }
+
+  private void addNewIpAddresses(List<IPAddress> newIpAddresses, Response response) throws IOException {
+    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port("4567").build();
+    List<IPAddress> ipAddresses = mapper.readValue(Objects.requireNonNull(response.body()).byteStream(),
+        mapper.getTypeFactory().constructCollectionType(List.class, IPAddress.class));
+    newIpAddresses.addAll(
+        ipAddresses.stream()
+            .filter(ip -> !ip.equals(local))
+            .collect(Collectors.toList())
+    );
   }
 }

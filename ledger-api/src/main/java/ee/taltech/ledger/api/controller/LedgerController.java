@@ -35,15 +35,10 @@ public class LedgerController {
 
   public void initialize() {
     mapAddrRoutes();
-
     mapGetBlocksRoutes();
-
     mapGetDataRoutes();
-
     mapTransactionRoutes();
-
     mapBlockRoutes();
-
     startupBootService();
   }
 
@@ -99,7 +94,6 @@ public class LedgerController {
           return new Gson().toJsonTree(Status.builder()
               .statusType("Success")
               .statusMessage("Transaction added to ledger").build());
-
         })));
   }
 
@@ -116,7 +110,7 @@ public class LedgerController {
     try {
       bootService.runStartup(ledger, ipService);
     } catch (IOException e) {
-      LOGGER.severe(Arrays.toString(e.getStackTrace()));
+      LOGGER.log(Level.SEVERE, "Error in startupBootService: {}", e.getMessage());
     }
     bootService = null; //after use this is not required so java garbage collection will delete it
   }

@@ -17,16 +17,11 @@ public class BlockService extends BaseService {
 
   private final HashingService hashingService = new HashingService();
 
-
   public List<Block> blockChainLedgerFromBlock(Ledger ledger, String hash) {
     List<Block> blockChain = new ArrayList<>();
-    String rootHash;
-
-    if (hash == null) {
-      rootHash = hashingService.genesisHash();
-    } else {
-      rootHash = hash;
-    }
+    String rootHash = hash == null
+        ? hashingService.genesisHash()
+        : hash;
 
     Map<String, Block> ledgerBlocks = ledger.getBlocks();
     while (ledgerBlocks.containsKey(rootHash)) {
