@@ -9,4 +9,4 @@
 * SonarLint
 
 ### JAR faili ehitamine
-* gradlew jar
+* gradlew shadowjar
