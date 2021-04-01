@@ -6,8 +6,6 @@ import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
 import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import okhttp3.RequestBody;
 
 import java.io.IOException;
@@ -15,22 +13,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class BlockService {
-  private static final String API_KEY = "84c1226e-8718-4ba7-8088-d6d3b2640d9d";
+public class BlockService extends BaseService {
 
   private final HashingService hashingService = new HashingService();
-  private final OkHttpClient client = new OkHttpClient();
-
 
   public List<Block> blockChainLedgerFromBlock(Ledger ledger, String hash) {
     List<Block> blockChain = new ArrayList<>();
-    String rootHash;
-
-    if (hash == null) {
-      rootHash = hashingService.genesisHash();
-    } else {
-      rootHash = hash;
-    }
+    String rootHash = hash == null
+        ? hashingService.genesisHash()
+        : hash;
 
     Map<String, Block> ledgerBlocks = ledger.getBlocks();
     while (ledgerBlocks.containsKey(rootHash)) {
@@ -39,18 +30,13 @@ public class BlockService {
       rootHash = hashingService.generateSHA256Hash(block);
     }
 
-    if (!blockChain.isEmpty()) {
-      return blockChain;
-    } else {
-      return null;
-    }
+    return !blockChain.isEmpty()
+        ? blockChain
+        : null;
   }
 
   public Block blockChainTransaction(Ledger ledger, String hash) {
-    if (ledger.getBlocks().containsKey(hash)) {
-      return ledger.getBlocks().get(hash);
-    }
-    return null;
+    return ledger.getBlocks().get(hash);
   }
 
   public void generateNewTransaction(Ledger ledger, BlockDTO blockDTO) throws IOException {
@@ -59,11 +45,12 @@ public class BlockService {
         .message(blockDTO.getMessage())
         .blockHeight(ledger.getBlocks().size()).build();
 
-    if (ledger.getLastHash() == null) {
-      transactionBlock.setHash(hashingService.genesisHash());
-    } else {
-      transactionBlock.setHash(ledger.getLastHash());
-    }
+    transactionBlock.setHash(
+        ledger.getLastHash() == null
+            ? hashingService.genesisHash()
+            : ledger.getLastHash()
+    );
+
     this.shareBlock(ledger, transactionBlock);
   }
 
@@ -74,18 +61,8 @@ public class BlockService {
       ledger.addBlock(block);
       for (IPAddress address : ledger.getIpAddresses()) {
         MediaType json = MediaType.parse("application/json; charset=utf-8");
-        RequestBody requestBody = RequestBody.create(json, mapper.writeValueAsString(block));
-        Request postRequest = new Request.Builder()
-            .url(blockSharingUrl(address))
-            .post(requestBody)
-            .build();
-
-        client.newCall(postRequest).execute();
+        sendPostRequest(blockSharingUrl(address), RequestBody.create(mapper.writeValueAsString(block), json));
       }
     }
-  }
-
-  private String blockSharingUrl(IPAddress ipAddress) {
-    return String.format("http://%s:%s/block/%s", ipAddress.getIp(), ipAddress.getPort(), API_KEY);
   }
 }

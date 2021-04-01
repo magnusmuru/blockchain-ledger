@@ -15,6 +15,13 @@ public class IPAddress {
   private String ip;
   private String port;
 
+  public static IPAddress parseString(String input) {
+    int colonIndex = input.lastIndexOf(":");
+    return new IPAddress(
+        input.substring(0, colonIndex),
+        input.substring(colonIndex + 1));
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof IPAddress) {

@@ -12,8 +12,8 @@ import ee.taltech.ledger.api.services.BootService;
 import ee.taltech.ledger.api.services.IPService;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static spark.Spark.*;
@@ -35,15 +35,10 @@ public class LedgerController {
 
   public void initialize() {
     mapAddrRoutes();
-
     mapGetBlocksRoutes();
-
     mapGetDataRoutes();
-
     mapTransactionRoutes();
-
     mapBlockRoutes();
-
     startupBootService();
   }
 
@@ -60,14 +55,9 @@ public class LedgerController {
         IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
         if (!ledger.getIpAddresses().contains(newAddress)) {
           ipService.writeIPAddressesToFileAndLedger(ledger, newAddress);
-          response.body("Two way binding achieved");
-          response.status(200);
-        } else if (ledger.getIpAddresses().contains(newAddress)) {
-          response.body("Two way binding achieved");
-          response.status(200);
-        } else {
-          response.status(304);
         }
+        response.body("Two way binding achieved");
+        response.status(200);
         return response;
       }));
     });
@@ -104,7 +94,6 @@ public class LedgerController {
           return new Gson().toJsonTree(Status.builder()
               .statusType("Success")
               .statusMessage("Transaction added to ledger").build());
-
         })));
   }
 
@@ -121,7 +110,7 @@ public class LedgerController {
     try {
       bootService.runStartup(ledger, ipService);
     } catch (IOException e) {
-      LOGGER.severe(Arrays.toString(e.getStackTrace()));
+      LOGGER.log(Level.SEVERE, "Error in startupBootService: {}", e.getMessage());
     }
     bootService = null; //after use this is not required so java garbage collection will delete it
   }
