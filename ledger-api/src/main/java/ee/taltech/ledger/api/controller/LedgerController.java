@@ -1,18 +1,18 @@
 package ee.taltech.ledger.api.controller;
 
 import com.google.gson.Gson;
+import ee.taltech.ledger.api.constant.PropertyConstants;
 import ee.taltech.ledger.api.constant.ResponseTypeConstants;
 import ee.taltech.ledger.api.dto.BlockDTO;
-import ee.taltech.ledger.api.model.Block;
-import ee.taltech.ledger.api.model.IPAddress;
-import ee.taltech.ledger.api.model.Ledger;
-import ee.taltech.ledger.api.model.Status;
+import ee.taltech.ledger.api.model.*;
 import ee.taltech.ledger.api.services.BlockService;
 import ee.taltech.ledger.api.services.BootService;
+import ee.taltech.ledger.api.services.CommandLineService;
 import ee.taltech.ledger.api.services.IPService;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,16 +24,21 @@ public class LedgerController {
   private final Ledger ledger;
   private final IPService ipService;
   private final BlockService blockService;
+  private final CommandLineService commandLineService;
   private BootService bootService;
 
   public LedgerController() {
     this.ledger = new Ledger();
     this.ipService = new IPService();
     this.blockService = new BlockService();
+    this.commandLineService = new CommandLineService();
     this.bootService = new BootService();
   }
 
-  public void initialize() {
+  public void initialize(String[] args) {
+    List<CliArgument> cliArguments = PropertyConstants.getCliArguments();
+    Map<String, Object> parameters = commandLineService.getParsedArgs(args, cliArguments);
+
     mapAddrRoutes();
     mapGetBlocksRoutes();
     mapGetDataRoutes();
@@ -110,7 +115,7 @@ public class LedgerController {
     try {
       bootService.runStartup(ledger, ipService);
     } catch (IOException e) {
-      LOGGER.log(Level.SEVERE, "Error in startupBootService: {}", e.getMessage());
+      LOGGER.log(Level.SEVERE, "Error in startupBootService: {0}", e.getMessage());
     }
     bootService = null; //after use this is not required so java garbage collection will delete it
   }
