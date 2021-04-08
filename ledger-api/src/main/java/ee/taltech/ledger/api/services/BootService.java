@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
-import okhttp3.FormBody;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import java.io.IOException;
@@ -52,8 +53,14 @@ public class BootService extends BaseService {
       }
       if (!(address.getIp().equals(local.getIp()) && address.getPort().equals(local.getPort()))) {
         LOGGER.log(Level.INFO, "Local checking blocks from IP {0}", address.toPlainString());
-
-        Response postResponse = sendPostRequest(ipRequestURL(address), new FormBody.Builder().build());
+        MediaType jsonMedia = MediaType.parse("application/json; charset=utf-8");
+        String json = "{\"ip\":\"" +
+            address.getIp() +
+            "\",\"port\":\"" +
+            address.getPort() +
+            "\"}";
+        Response postResponse = sendPostRequest(ipRequestURL(address),
+            RequestBody.create(json, jsonMedia));
         Response blockResponse = sendGetRequest(blockRequestUrl(address));
         if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
           LOGGER.info("BootService.runStartup: Two way binding successful");

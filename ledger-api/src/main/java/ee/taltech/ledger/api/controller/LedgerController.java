@@ -59,7 +59,6 @@ public class LedgerController {
         return new Gson().toJson(ipAddressList);
       }));
       post("", ((request, response) -> {
-        response.type(ResponseTypeConstants.JSON);
         IpDTO ipDTO = new Gson().fromJson(request.body(), IpDTO.class);
         String ip = ipDTO.getIp();
         String port = ipDTO.getPort();
