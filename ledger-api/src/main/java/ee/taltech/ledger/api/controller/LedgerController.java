@@ -12,6 +12,8 @@ import ee.taltech.ledger.api.services.BootService;
 import ee.taltech.ledger.api.services.IPService;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,10 +29,11 @@ public class LedgerController {
   private final BlockService blockService;
   private BootService bootService;
 
-  public LedgerController(String port) {
+  public LedgerController(String port) throws UnknownHostException {
     this.ledger = new Ledger();
     this.localPort = port;
-    this.ipService = new IPService();
+    IPAddress localIp = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
+    this.ipService = new IPService(localIp);
     this.blockService = new BlockService();
     this.bootService = new BootService();
   }
@@ -51,14 +54,17 @@ public class LedgerController {
       get("", ((request, response) -> {
         response.type(ResponseTypeConstants.JSON);
         List<IPAddress> ipAddressList = ledger.getIpAddresses();
+        LOGGER.log(Level.INFO, "GET /addr - Request IP - {0}:{1}", new String[]{request.ip(), String.valueOf(request.port())});
         return new Gson().toJson(ipAddressList);
       }));
       post("", ((request, response) -> {
         String ip = String.valueOf(request.ip());
         String port = String.valueOf(request.port());
+        LOGGER.log(Level.INFO, "POST /addr - Request IP - {0}:{1}", new String[]{ip, port});
         IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
         if (!ledger.getIpAddresses().contains(newAddress)) {
           ipService.writeIPAddressesToFileAndLedger(ledger, newAddress);
+          LOGGER.log(Level.INFO, "POST /addr - Added new IP {0}", newAddress.toPlainString());
         }
         response.body("Two way binding achieved");
         response.status(200);

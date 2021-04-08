@@ -2,6 +2,7 @@ package ee.taltech.ledger.api.services;
 
 import ee.taltech.ledger.api.model.IPAddress;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -18,9 +19,24 @@ public class FileReadWriteService {
   private static final Logger LOGGER = Logger.getLogger(FileReadWriteService.class.getName());
 
   private static final String IP_FILE = "./data/ip.txt";
+  private final IPAddress host;
+  private final String portIpFile;
+
+  public FileReadWriteService(IPAddress ip) {
+    this.host = ip;
+    this.portIpFile = "./data/" + ip.getPort() + "-" + ip.getIp() + ".txt";
+    try {
+      File output = new File(portIpFile);
+      if (output.createNewFile()) {
+        LOGGER.log(Level.INFO, "Successfully created a new IP file ");
+      };
+    } catch (IOException e) {
+      LOGGER.log(Level.SEVERE, "FileReadWriteService - Error creating new ip file with path {0}", portIpFile);
+    }
+  }
 
   public List<IPAddress> getIPs() throws IOException {
-    Path path = Paths.get(IP_FILE);
+    Path path = Paths.get(portIpFile);
     List<IPAddress> output = new ArrayList<>();
 
     if (path.toFile().isFile()) {
@@ -37,7 +53,7 @@ public class FileReadWriteService {
   }
 
   public void writeIPs(List<IPAddress> ipList) {
-    try (FileWriter writer = new FileWriter(IP_FILE)) {
+    try (FileWriter writer = new FileWriter(portIpFile)) {
       for (IPAddress ip : ipList) {
         writer.write(ip.getIp() + ":" + ip.getPort() + "\n");
       }

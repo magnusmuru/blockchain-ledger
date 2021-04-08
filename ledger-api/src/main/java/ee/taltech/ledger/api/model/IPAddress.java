@@ -35,4 +35,8 @@ public class IPAddress {
   public int hashCode() {
     return Objects.hash(ip, port);
   }
+
+  public String toPlainString() {
+    return ip + ":" + port;
+  }
 }

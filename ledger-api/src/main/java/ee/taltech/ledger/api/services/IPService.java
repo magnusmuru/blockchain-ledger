@@ -6,7 +6,15 @@ import ee.taltech.ledger.api.model.Ledger;
 import java.io.IOException;
 
 public class IPService {
-  private final FileReadWriteService readWriteService = new FileReadWriteService();
+
+  private final IPAddress localIp;
+
+  private final FileReadWriteService readWriteService;
+
+  public IPService(IPAddress ip) {
+    this.localIp = ip;
+    this.readWriteService = new FileReadWriteService(localIp);
+  }
 
   public void updateIPAddressesFromFile(Ledger ledger) throws IOException {
     ledger.setIpAddresses(readWriteService.getIPs());

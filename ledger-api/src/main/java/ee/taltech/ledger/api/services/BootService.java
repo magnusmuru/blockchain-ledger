@@ -12,18 +12,33 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class BootService extends BaseService {
   private static final Logger LOGGER = Logger.getLogger(BootService.class.getName());
 
+  private static final String MASTER_NODE_IP = "172.24.144.1:4567";
+
   private final ObjectMapper mapper = new ObjectMapper();
 
   public void runStartup(Ledger ledger, IPService ipService, String localPort) throws IOException {
+    IPAddress master = IPAddress.parseString(MASTER_NODE_IP);
     IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
+    LOGGER.log(Level.INFO, "LOCAL: {0}:{1}", new String[]{local.getIp(), local.getPort()});
+    LOGGER.log(Level.INFO, "MASTER: {0}:{1}", new String[]{master.getIp(), master.getPort()});
+
     ipService.updateIPAddressesFromFile(ledger);
     List<IPAddress> newIpAddresses = new ArrayList<>(ledger.getIpAddresses());
+
+    Response masterResponse = sendGetRequest(ipRequestURL(master));
+    if (masterResponse.isSuccessful()) {
+      LOGGER.log(Level.INFO, "Successfully contacted master");
+      ledger.addIPAddress(master);
+      addNewIpAddresses(newIpAddresses, masterResponse, localPort);
+    }
+
     for (IPAddress ipAddress : ledger.getIpAddresses()) {
       Response response = sendGetRequest(ipRequestURL(ipAddress));
       if (response.isSuccessful()) {
@@ -32,9 +47,12 @@ public class BootService extends BaseService {
     }
     for (IPAddress address : newIpAddresses) {
       if (!ledger.getIpAddresses().contains(address)) {
+        LOGGER.log(Level.INFO, "Local has no IP {0}, adding to ledger", address.toPlainString());
         ledger.addIPAddress(address);
       }
-      if (!address.getIp().equals(local.getIp())) {
+      if (!(address.getIp().equals(local.getIp()) && address.getPort().equals(local.getPort()))) {
+        LOGGER.log(Level.INFO, "Local checking blocks from IP {0}", address.toPlainString());
+
         Response postResponse = sendPostRequest(ipRequestURL(address), new FormBody.Builder().build());
         Response blockResponse = sendGetRequest(blockRequestUrl(address));
         if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
