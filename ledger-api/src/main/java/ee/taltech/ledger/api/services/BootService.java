@@ -61,9 +61,9 @@ public class BootService extends BaseService {
         LOGGER.log(Level.INFO, "Local checking blocks from IP {0}", address.toPlainString());
         MediaType jsonMedia = MediaType.parse("application/json; charset=utf-8");
         String json = "{\"ip\":\"" +
-            address.getIp() +
+            local.getIp() +
             "\",\"port\":\"" +
-            address.getPort() +
+            local.getPort() +
             "\"}";
         Response postResponse = sendPostRequest(ipRequestURL(address),
             RequestBody.create(json, jsonMedia));
