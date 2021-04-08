@@ -30,13 +30,13 @@ public class LedgerController {
   private final BlockService blockService;
   private BootService bootService;
 
-  public LedgerController(String port) throws UnknownHostException {
+  public LedgerController(IpDTO master) throws UnknownHostException {
     this.ledger = new Ledger();
-    this.localPort = port;
+    this.localPort = master.getPort();
     IPAddress localIp = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     this.ipService = new IPService(localIp);
     this.blockService = new BlockService();
-    this.bootService = new BootService();
+    this.bootService = new BootService(master);
   }
 
   public void initialize() {
@@ -59,18 +59,25 @@ public class LedgerController {
         return new Gson().toJson(ipAddressList);
       }));
       post("", ((request, response) -> {
-        IpDTO ipDTO = new Gson().fromJson(request.body(), IpDTO.class);
-        String ip = ipDTO.getIp();
-        String port = ipDTO.getPort();
-        LOGGER.log(Level.INFO, "POST /addr - Request IP - {0}:{1}", new String[]{ip, port});
-        IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
-        if (!ledger.getIpAddresses().contains(newAddress)) {
-          ipService.writeIPAddressesToFileAndLedger(ledger, newAddress);
-          LOGGER.log(Level.INFO, "POST /addr - Added new IP {0}", newAddress.toPlainString());
+        response.type(ResponseTypeConstants.JSON);
+        try {
+          IpDTO ipDTO = new Gson().fromJson(request.body(), IpDTO.class);
+          String ip = ipDTO.getIp();
+          String port = ipDTO.getPort();
+          LOGGER.log(Level.INFO, "POST /addr - Request IP - {0}:{1}", new String[]{ip, port});
+          IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
+          if (!ledger.getIpAddresses().contains(newAddress)) {
+            ipService.writeIPAddressesToFileAndLedger(ledger, newAddress);
+            LOGGER.log(Level.INFO, "POST /addr - Added new IP {0}", newAddress.toPlainString());
+          }
+          return new Gson().toJsonTree(Status.builder()
+              .statusType("Success")
+              .statusMessage("Two way binding successful").build());
+        } catch (Exception e) {
+          return new Gson().toJsonTree(Status.builder()
+              .statusType("Failed")
+              .statusMessage("Invalid IP or Port").build());
         }
-        response.body("Two way binding achieved");
-        response.status(200);
-        return response;
       }));
     });
   }
@@ -100,21 +107,38 @@ public class LedgerController {
     path("/transaction", () ->
         post("", ((request, response) -> {
           response.type(ResponseTypeConstants.JSON);
-          BlockDTO blockDTO = new Gson().fromJson(request.body(), BlockDTO.class);
-          blockService.generateNewTransaction(ledger, blockDTO);
-          response.status(200);
-          return new Gson().toJsonTree(Status.builder()
-              .statusType("Success")
-              .statusMessage("Transaction added to ledger").build());
+          try {
+            BlockDTO blockDTO = new Gson().fromJson(request.body(), BlockDTO.class);
+            blockService.generateNewTransaction(ledger, blockDTO);
+            response.status(200);
+            return new Gson().toJsonTree(Status.builder()
+                .statusType("Success")
+                .statusMessage("Transaction added to ledger").build());
+          } catch (Exception e) {
+            response.status(400);
+            return new Gson().toJsonTree(Status.builder()
+                .statusType("Fail")
+                .statusMessage("Transaction addition failed").build());
+          }
         })));
   }
 
   private void mapBlockRoutes() {
     path("/block", () ->
         post("/:apikey", ((request, response) -> {
-          Block block = new Gson().fromJson(request.body(), Block.class);
-          blockService.shareBlock(ledger, block);
-          return "";
+          response.type(ResponseTypeConstants.JSON);
+          try {
+            Block block = new Gson().fromJson(request.body(), Block.class);
+            blockService.shareBlock(ledger, block);
+            return new Gson().toJsonTree(Status.builder()
+                .statusType("Success")
+                .statusMessage("Block added successfully").build());
+          } catch (Exception e) {
+            response.status(200);
+            return new Gson().toJsonTree(Status.builder()
+                .statusType("Fail")
+                .statusMessage("Block addition failed").build());
+          }
         })));
   }
 

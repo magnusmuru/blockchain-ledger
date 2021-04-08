@@ -8,6 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BlockDTO {
-  private int transaction;
+  private double transaction;
   private String message;
 }

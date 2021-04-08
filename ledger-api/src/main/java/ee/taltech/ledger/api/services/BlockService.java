@@ -55,13 +55,15 @@ public class BlockService extends BaseService {
   }
 
   public void shareBlock(Ledger ledger, Block block) throws IOException {
-    if (!ledger.getBlocks().containsKey(block.getHash())) {
-      ObjectMapper mapper = new ObjectMapper();
-      ledger.setLastHash(hashingService.generateSHA256Hash(block));
-      ledger.addBlock(block);
-      for (IPAddress address : ledger.getIpAddresses()) {
-        MediaType json = MediaType.parse("application/json; charset=utf-8");
-        sendPostRequest(blockSharingUrl(address), RequestBody.create(mapper.writeValueAsString(block), json));
+    if (block != null) {
+      if (!ledger.getBlocks().containsKey(block.getHash())) {
+        ObjectMapper mapper = new ObjectMapper();
+        ledger.setLastHash(hashingService.generateSHA256Hash(block));
+        ledger.addBlock(block);
+        for (IPAddress address : ledger.getIpAddresses()) {
+          MediaType json = MediaType.parse("application/json; charset=utf-8");
+          sendPostRequest(blockSharingUrl(address), RequestBody.create(mapper.writeValueAsString(block), json));
+        }
       }
     }
   }

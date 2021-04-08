@@ -18,18 +18,18 @@ import java.util.logging.Logger;
 public class FileReadWriteService {
   private static final Logger LOGGER = Logger.getLogger(FileReadWriteService.class.getName());
 
-  private static final String IP_FILE = "./data/ip.txt";
-  private final IPAddress host;
   private final String portIpFile;
 
   public FileReadWriteService(IPAddress ip) {
-    this.host = ip;
-    this.portIpFile = "./data/" + ip.getPort() + "-" + ip.getIp() + ".txt";
+    String path = "./data/";
+    String fileName = ip.getPort() + "-" + ip.getIp() + ".txt";
+    this.portIpFile = path + fileName;
     try {
+      Files.createDirectories(Paths.get(path));
       File output = new File(portIpFile);
       if (output.createNewFile()) {
         LOGGER.log(Level.INFO, "Successfully created a new IP file ");
-      };
+      }
     } catch (IOException e) {
       LOGGER.log(Level.SEVERE, "FileReadWriteService - Error creating new ip file with path {0}", portIpFile);
     }

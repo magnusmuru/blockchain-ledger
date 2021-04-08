@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 public class Block {
   private String hash;
-  private int transaction;
+  private double transaction;
   private String message;
   private int blockHeight;
 }

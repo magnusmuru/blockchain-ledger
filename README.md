@@ -2,40 +2,41 @@
 
 ### ledger-api
 
-Kloonide käivitamiseks pane nende IPd `data/ip.txt` faili
+### API käsklused, mida kloonid kasutavad omavahel suhtlemiseks
 
-### API käsklused kuidas erinevad kloonid omavahel suhelda saavad
+* `GET http://hostip:port/addr`
 
-`GET/POST http://hostip:port/addr`
+  Näitab ühe klooni või masteri juures olevaid IP aadresse.
+  Kasutatakse IP-aadresside jagamiseks. GET käsklus jooksutatakse kohe alguses 
+  ning selle info alusel saadakse ühelt teadaolevalt hostilt kõik talle teadaolevad kloonid.
 
-Kasutatakse IP aadresside jagamiseks. GET käsklus jooksutatakse kohe alguses 
-ning selle info alusel saadakse ühelt teadaolevalt hostilt kõik talle teadaolevad kloonid.
-POST käsklusega saadab kloon kõikidele kloonidele info et on olemas.
+* `POST http://hostip:port/addr`
+  
+  Saadab IP aadressi ühele kloonile edasi.
+  POST käsklusega saadab kloon kõikidele kloonidele start up ajal info oma IP aadressite kohta.
 
+* `GET http://hostip:port/getblocks | http://hostip:port/getblocks/(hash)`
 
-`GET http://hostip:port/getblocks |
-http://hostip:port/getblocks/(hash)`
+  Selle alusel saab pärida kas kõiki blokke või ainult neid teatud hashist.
 
-Selle alusel saab pärida kas kõiki blokke või ainult neid teatud hashist.
+* `GET http://hostip:port/getdata/(hash)`
 
-`GET http://hostip:port/getdata/(hash)`
+  Selle abil saab kindla hashiga blocki sisu kätte.
 
-Selle abil saab kindla hashiga blocki sisu kätte
+* `POST http://hostip:port/transaction`
+  ```
+  {
+  "message": "content_string",
+  "transaction": 5555
+  }
+  ```
 
-`POST http://hostip:port/transaction`
-```
-{
-"message": "content_string",
-"transaction": 5555
-}
-```
-
-Lisab uue tehingu ledgerisse ning käskluse `POST http://hostip:port/block` edasi teistele ledgeritele.
+  Lisab uue tehingu ledgerisse ning käskluse `POST http://hostip:port/block` edasi teistele ledgeritele.
 
 
 
 #### JAR faili käivitamine
 - Käivitada käsklus
-```
-java -jar ledger-api\build\libs\ledger-api-all.jar
-```
+  ```
+  java -jar ledger-api\build\libs\ledger-api-all.jar ip:port
+  ```

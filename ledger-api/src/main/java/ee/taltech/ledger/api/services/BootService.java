@@ -1,6 +1,7 @@
 package ee.taltech.ledger.api.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import ee.taltech.ledger.api.dto.IpDTO;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
@@ -20,12 +21,17 @@ import java.util.stream.Collectors;
 public class BootService extends BaseService {
   private static final Logger LOGGER = Logger.getLogger(BootService.class.getName());
 
-  private static final String MASTER_NODE_IP = "172.24.144.1:4567";
-
   private final ObjectMapper mapper = new ObjectMapper();
 
+  private final IpDTO masterIpDto;
+
+  public BootService(IpDTO master) {
+    this.masterIpDto = master;
+  }
+
+
   public void runStartup(Ledger ledger, IPService ipService, String localPort) throws IOException {
-    IPAddress master = IPAddress.parseString(MASTER_NODE_IP);
+    IPAddress master = IPAddress.dtoToAddress(masterIpDto);
     IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     LOGGER.log(Level.INFO, "LOCAL: {0}:{1}", new String[]{local.getIp(), local.getPort()});
     LOGGER.log(Level.INFO, "MASTER: {0}:{1}", new String[]{master.getIp(), master.getPort()});

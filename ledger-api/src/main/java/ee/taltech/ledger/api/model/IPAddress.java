@@ -1,5 +1,6 @@
 package ee.taltech.ledger.api.model;
 
+import ee.taltech.ledger.api.dto.IpDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,6 +21,13 @@ public class IPAddress {
     return new IPAddress(
         input.substring(0, colonIndex),
         input.substring(colonIndex + 1));
+  }
+
+  public static IPAddress dtoToAddress(IpDTO masterIpDto) {
+    return new IPAddress(
+        masterIpDto.getIp(),
+        masterIpDto.getPort()
+    );
   }
 
   @Override
