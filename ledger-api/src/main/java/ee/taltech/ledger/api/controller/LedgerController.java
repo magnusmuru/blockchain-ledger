@@ -3,6 +3,7 @@ package ee.taltech.ledger.api.controller;
 import com.google.gson.Gson;
 import ee.taltech.ledger.api.constant.ResponseTypeConstants;
 import ee.taltech.ledger.api.dto.BlockDTO;
+import ee.taltech.ledger.api.dto.IpDTO;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
@@ -58,8 +59,10 @@ public class LedgerController {
         return new Gson().toJson(ipAddressList);
       }));
       post("", ((request, response) -> {
-        String ip = String.valueOf(request.ip());
-        String port = String.valueOf(request.port());
+        response.type(ResponseTypeConstants.JSON);
+        IpDTO ipDTO = new Gson().fromJson(request.body(), IpDTO.class);
+        String ip = ipDTO.getIp();
+        String port = ipDTO.getPort();
         LOGGER.log(Level.INFO, "POST /addr - Request IP - {0}:{1}", new String[]{ip, port});
         IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
         if (!ledger.getIpAddresses().contains(newAddress)) {
