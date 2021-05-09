@@ -1,7 +1,6 @@
 package ee.taltech.ledger.api.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import ee.taltech.ledger.api.dto.IpDTO;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
@@ -14,6 +13,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -23,40 +23,30 @@ public class BootService extends BaseService {
 
   private final ObjectMapper mapper = new ObjectMapper();
 
-  private final IpDTO masterIpDto;
-
-  public BootService(IpDTO master) {
-    this.masterIpDto = master;
-  }
-
-
   public void runStartup(Ledger ledger, IPService ipService, String localPort) throws IOException {
-    IPAddress master = IPAddress.dtoToAddress(masterIpDto);
     IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     LOGGER.log(Level.INFO, "LOCAL: {0}:{1}", new String[]{local.getIp(), local.getPort()});
-    LOGGER.log(Level.INFO, "MASTER: {0}:{1}", new String[]{master.getIp(), master.getPort()});
 
     ipService.updateIPAddressesFromFile(ledger);
     List<IPAddress> newIpAddresses = new ArrayList<>(ledger.getIpAddresses());
 
-    Response masterResponse = sendGetRequest(ipRequestURL(master));
-    if (masterResponse.isSuccessful()) {
-      LOGGER.log(Level.INFO, "Successfully contacted master");
-      ledger.addIPAddress(master);
-      addNewIpAddresses(newIpAddresses, masterResponse, localPort);
-    }
+    List<IPAddress> fallbackIPs = FileReadWriteService.getFallbackIPs();
+    if (fallbackIPs != null && !fallbackIPs.isEmpty()) newIpAddresses.addAll(fallbackIPs);
 
-    for (IPAddress ipAddress : ledger.getIpAddresses()) {
-      Response response = sendGetRequest(ipRequestURL(ipAddress));
-      if (response.isSuccessful()) {
-        addNewIpAddresses(newIpAddresses, response, localPort);
+    for (IPAddress ipAddress : !ledger.getIpAddresses().isEmpty() ? ledger.getIpAddresses()
+        : fallbackIPs != null ? fallbackIPs : new ArrayList<IPAddress>()) {
+      try {
+        Response response = sendGetRequest(ipRequestURL(ipAddress));
+        if (response.isSuccessful() && !local.equals(ipAddress)) {
+          ledger.addIPAddress(ipAddress);
+          ipService.writeIPAddressesToFileAndLedger(ledger, ipAddress);
+          addNewIpAddresses(newIpAddresses, response, localPort);
+        }
+      } catch (IOException e) {
+        LOGGER.log(Level.WARNING, "Error in BootService.runStartup: {0}", e.getMessage());
       }
     }
     for (IPAddress address : newIpAddresses) {
-      if (!ledger.getIpAddresses().contains(address)) {
-        LOGGER.log(Level.INFO, "Local has no IP {0}, adding to ledger", address.toPlainString());
-        ledger.addIPAddress(address);
-      }
       if (!(address.getIp().equals(local.getIp()) && address.getPort().equals(local.getPort()))) {
         LOGGER.log(Level.INFO, "Local checking blocks from IP {0}", address.toPlainString());
         MediaType jsonMedia = MediaType.parse("application/json; charset=utf-8");
@@ -65,12 +55,18 @@ public class BootService extends BaseService {
             "\",\"port\":\"" +
             local.getPort() +
             "\"}";
-        Response postResponse = sendPostRequest(ipRequestURL(address),
-            RequestBody.create(json, jsonMedia));
-        Response blockResponse = sendGetRequest(blockRequestUrl(address));
-        if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
-          LOGGER.info("BootService.runStartup: Two way binding successful");
-          addNewBlocks(ledger, blockResponse);
+        try {
+          Response postResponse = sendPostRequest(ipRequestURL(address),
+              RequestBody.create(json, jsonMedia));
+          Response blockResponse = sendGetRequest(blockRequestUrl(address));
+          if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
+            LOGGER.info("BootService.runStartup: Two way binding successful");
+            ledger.addIPAddress(address);
+            ipService.writeIPAddressesToFileAndLedger(ledger, address);
+            addNewBlocks(ledger, blockResponse);
+          }
+        } catch (IOException e) {
+          LOGGER.log(Level.WARNING, "Error in BootService.runStartup: {0}", e.getMessage());
         }
       }
     }

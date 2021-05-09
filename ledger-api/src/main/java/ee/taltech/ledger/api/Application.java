@@ -8,7 +8,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Application {
-
+//java -jar ledger-api\build\libs\ledger-api-all.jar 172.27.160.1:5000
   private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
 
   public static void main(String[] args) throws UnknownHostException {

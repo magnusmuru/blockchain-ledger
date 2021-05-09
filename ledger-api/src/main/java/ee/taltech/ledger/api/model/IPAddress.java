@@ -23,17 +23,17 @@ public class IPAddress {
         input.substring(colonIndex + 1));
   }
 
-  public static IPAddress dtoToAddress(IpDTO masterIpDto) {
-    return new IPAddress(
-        masterIpDto.getIp(),
-        masterIpDto.getPort()
-    );
-  }
+//  public static IPAddress dtoToAddress(IpDTO masterIpDto) {
+//    return new IPAddress(
+//        masterIpDto.getIp(),
+//        masterIpDto.getPort()
+//    );
+//  }
 
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof IPAddress) {
-      return (((IPAddress) obj).getIp().equals(this.getIp()) && ((IPAddress) obj).getPort().equals(this.getPort()));
+      return ((IPAddress) obj).getIp().equals(this.getIp()) && ((IPAddress) obj).getPort().equals(this.getPort());
     } else {
       return super.equals(obj);
     }

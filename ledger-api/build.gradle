@@ -10,9 +10,6 @@ allprojects {
   }
 }
 
-sourceCompatibility = '11'
-targetCompatibility = '11'
-
 jar {
   manifest {
     attributes("Main-Class": "ee.taltech.ledger.api.Application")

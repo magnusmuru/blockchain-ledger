@@ -15,7 +15,7 @@ import ee.taltech.ledger.api.services.IPService;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
+import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,12 +36,12 @@ public class LedgerController {
     IPAddress localIp = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     this.ipService = new IPService(localIp);
     this.blockService = new BlockService();
-    this.bootService = new BootService(master);
+    this.bootService = new BootService(); //master);
   }
 
   public void initialize() {
     port(Integer.parseInt(this.localPort));
-    LOGGER.log(Level.INFO, "LedgerController.initialize - initializing node on port {0}", localPort);
+    LOGGER.log(Level.INFO, "LedgerController.initialize - initializing node on port {}", localPort);
     mapAddrRoutes();
     mapGetBlocksRoutes();
     mapGetDataRoutes();
@@ -54,7 +54,7 @@ public class LedgerController {
     path("/addr", () -> {
       get("", ((request, response) -> {
         response.type(ResponseTypeConstants.JSON);
-        List<IPAddress> ipAddressList = ledger.getIpAddresses();
+        HashSet<IPAddress> ipAddressList = ledger.getIpAddresses();
         LOGGER.log(Level.INFO, "GET /addr - Request IP - {0}:{1}", new String[]{request.ip(), String.valueOf(request.port())});
         return new Gson().toJson(ipAddressList);
       }));

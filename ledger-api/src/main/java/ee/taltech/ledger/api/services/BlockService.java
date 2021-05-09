@@ -12,8 +12,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class BlockService extends BaseService {
+  private static final Logger LOGGER = Logger.getLogger(BlockService.class.getName());
 
   private final HashingService hashingService = new HashingService();
 
@@ -40,10 +43,7 @@ public class BlockService extends BaseService {
   }
 
   public void generateNewTransaction(Ledger ledger, BlockDTO blockDTO) throws IOException {
-    Block transactionBlock = Block.builder()
-        .transaction(blockDTO.getTransaction())
-        .message(blockDTO.getMessage())
-        .blockHeight(ledger.getBlocks().size()).build();
+    Block transactionBlock = blockDTO.toBlock();
 
     transactionBlock.setHash(
         ledger.getLastHash() == null
@@ -54,15 +54,17 @@ public class BlockService extends BaseService {
     this.shareBlock(ledger, transactionBlock);
   }
 
-  public void shareBlock(Ledger ledger, Block block) throws IOException {
-    if (block != null) {
-      if (!ledger.getBlocks().containsKey(block.getHash())) {
-        ObjectMapper mapper = new ObjectMapper();
-        ledger.setLastHash(hashingService.generateSHA256Hash(block));
-        ledger.addBlock(block);
-        for (IPAddress address : ledger.getIpAddresses()) {
-          MediaType json = MediaType.parse("application/json; charset=utf-8");
+  public void shareBlock(Ledger ledger, Block block)  {
+    if (block != null && !ledger.getBlocks().containsKey(block.getHash())) {
+      ObjectMapper mapper = new ObjectMapper();
+      ledger.setLastHash(hashingService.generateSHA256Hash(block));
+      ledger.addBlock(block);
+      for (IPAddress address : ledger.getIpAddresses()) {
+        MediaType json = MediaType.parse("application/json; charset=utf-8");
+        try {
           sendPostRequest(blockSharingUrl(address), RequestBody.create(mapper.writeValueAsString(block), json));
+        } catch (IOException e) {
+          LOGGER.log(Level.WARNING, "Error in BLockService.shareBlock: {0}", e.getMessage());
         }
       }
     }

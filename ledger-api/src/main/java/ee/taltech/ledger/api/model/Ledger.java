@@ -5,10 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Getter
 @AllArgsConstructor
@@ -16,7 +13,7 @@ import java.util.Map;
 public class Ledger {
 
   @Setter
-  private List<IPAddress> ipAddresses = new ArrayList<>();
+  private HashSet<IPAddress> ipAddresses = new HashSet<>();
 
   private final Map<String, Block> blocks = new HashMap<>();
 
