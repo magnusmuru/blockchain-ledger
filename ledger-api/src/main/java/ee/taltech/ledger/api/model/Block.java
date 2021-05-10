@@ -4,11 +4,7 @@ import com.google.gson.Gson;
 import ee.taltech.ledger.api.dto.BlockDTO;
 import lombok.*;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 
 @Getter
 @Setter
@@ -18,23 +14,23 @@ import java.util.TimeZone;
 public class Block {
   private int nr;
   private String previousHash;
-  private Date timestamp;
-  private String nonce;
-  private String hash;
+  private String timestamp;
   private String creator;
   private String merkleRoot;
   private int count;
-  private List<Transaction> transactions;
+  private List<SignedTransaction> transactions;
+
+  @Setter
+  private int nonce;
+  private String hash;
 
   public BlockDTO toDto() {
     Gson gson = new Gson();
-    DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-    df.setTimeZone(TimeZone.getTimeZone("UTC"));
     return BlockDTO.builder()
         .nr(nr)
         .previousHash(previousHash)
-        .timestamp(df.format(timestamp))
-        .nonce(nonce)
+        .timestamp(timestamp)
+        .nonce(Integer.toString(nonce))
         .hash(hash)
         .creator(creator)
         .merkleRoot(merkleRoot)

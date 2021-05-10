@@ -22,7 +22,7 @@ public class BlockServiceTest {
     blockService = new BlockService();
     hashingService = new HashingService();
     ipAddress = new IPAddress("1.1.1.1", "9999");
-    block = new Block("123abc", 123, "msg", 1);
+    block = new Block();
     ledger = new Ledger();
   }
 

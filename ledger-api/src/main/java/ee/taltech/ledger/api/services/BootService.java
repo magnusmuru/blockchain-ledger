@@ -1,6 +1,7 @@
 package ee.taltech.ledger.api.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.IPAddress;
 import ee.taltech.ledger.api.model.Ledger;
@@ -11,6 +12,7 @@ import okhttp3.Response;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,6 +24,7 @@ public class BootService extends BaseService {
   private static final Logger LOGGER = Logger.getLogger(BootService.class.getName());
 
   private final ObjectMapper mapper = new ObjectMapper();
+  private final Gson gson = new Gson();
 
   public void runStartup(Ledger ledger, IPService ipService, String localPort) throws IOException {
     IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
@@ -42,6 +45,7 @@ public class BootService extends BaseService {
           ipService.writeIPAddressesToFileAndLedger(ledger, ipAddress);
           addNewIpAddresses(newIpAddresses, response, localPort);
         }
+        response.close();
       } catch (IOException e) {
         LOGGER.log(Level.WARNING, "Error in BootService.runStartup: {0}", e.getMessage());
       }
@@ -65,6 +69,8 @@ public class BootService extends BaseService {
             ipService.writeIPAddressesToFileAndLedger(ledger, address);
             addNewBlocks(ledger, blockResponse);
           }
+          postResponse.close();
+          blockResponse.close();
         } catch (IOException e) {
           LOGGER.log(Level.WARNING, "Error in BootService.runStartup: {0}", e.getMessage());
         }
@@ -74,9 +80,12 @@ public class BootService extends BaseService {
   }
 
   private void addNewBlocks(Ledger ledger, Response blockResponse) throws IOException {
+    if (blockResponse.body() == null) {
+      LOGGER.info("Bootservice.runStartup: ledger has no blocks to ingest");
+      return;
+    }
     try {
-      List<Block> chainBlocks = new ArrayList<>(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(),
-          mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
+      List<Block> chainBlocks = Arrays.asList(gson.fromJson(Objects.requireNonNull(blockResponse.body()).string(), Block[].class));
       chainBlocks.stream()
           .filter(block -> !ledger.getBlocks().containsKey(block.getHash()))
           .forEach(ledger::addBlock);

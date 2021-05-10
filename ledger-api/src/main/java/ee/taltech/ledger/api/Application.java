@@ -4,6 +4,7 @@ import ee.taltech.ledger.api.controller.LedgerController;
 import ee.taltech.ledger.api.dto.IpDTO;
 
 import java.net.UnknownHostException;
+import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,6 +24,8 @@ public class Application {
       }
     } catch (IndexOutOfBoundsException e) {
       LOGGER.log(Level.SEVERE, "Error parsing ip:port {0}", args[0]);
+    } catch (NoSuchAlgorithmException e) {
+      LOGGER.log(Level.SEVERE, "Error creating a keypair: {0}", e.getMessage());
     }
   }
 }
