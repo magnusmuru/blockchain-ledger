@@ -12,6 +12,7 @@ public class HashingService {
   public static final String GENESIS_HASH = "blockchain-ledger";
   public static final String HASH_PREFIX = "0000";
 
+
   public String generateSHA256Hash(Block block) {
     Gson gson = new Gson();
     return Hashing.sha256().hashString(gson.toJson(block.toDto()), StandardCharsets.UTF_8).toString();
@@ -26,11 +27,13 @@ public class HashingService {
     return Hashing.sha256().hashString(string, StandardCharsets.UTF_8).toString();
   }
 
+  public static <T> String generateSHA256Hash(T object) {
+    Gson gson = new Gson();
+    return Hashing.sha256().hashString(gson.toJson(object), StandardCharsets.UTF_8).toString();
+  }
+
   public String genesisHash() {
     return Hashing.sha256().hashString(GENESIS_HASH, StandardCharsets.UTF_8).toString();
   }
 
-  public String mineBlock(Block block) {
-    return null;
-  }
 }

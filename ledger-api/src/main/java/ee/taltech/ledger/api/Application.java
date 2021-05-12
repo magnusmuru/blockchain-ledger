@@ -1,7 +1,7 @@
 package ee.taltech.ledger.api;
 
 import ee.taltech.ledger.api.controller.LedgerController;
-import ee.taltech.ledger.api.dto.IpDTO;
+import ee.taltech.ledger.api.model.IPAddress;
 
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
@@ -16,7 +16,7 @@ public class Application {
     try {
       if (args.length != 0) {
         String[] parts = args[0].split(":");
-        IpDTO master = new IpDTO(parts[0], parts[1]);
+        IPAddress master = new IPAddress(parts[0], parts[1]);
         LedgerController controller = new LedgerController(master);
         controller.initialize();
       } else {

@@ -3,7 +3,6 @@ package ee.taltech.ledger.api.controller;
 import com.google.gson.Gson;
 import ee.taltech.ledger.api.constant.ResponseTypeConstants;
 import ee.taltech.ledger.api.dto.BlockDTO;
-import ee.taltech.ledger.api.dto.IpDTO;
 import ee.taltech.ledger.api.model.*;
 import ee.taltech.ledger.api.services.BlockService;
 import ee.taltech.ledger.api.services.BootService;
@@ -12,10 +11,7 @@ import ee.taltech.ledger.api.services.IPService;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+import java.security.*;
 import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,12 +27,17 @@ public class LedgerController {
   private final BlockService blockService;
   private BootService bootService;
 
-  public LedgerController(IpDTO master) throws UnknownHostException, NoSuchAlgorithmException {
+  public LedgerController(IPAddress ipAddress) throws UnknownHostException, NoSuchAlgorithmException {
     KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
     kpg.initialize(2048);
+    KeyFactory kf = KeyFactory.getInstance("RSA");
     this.ledger = new Ledger();
     this.ledger.setKeyPair(kpg.generateKeyPair());
-    this.localPort = master.getPort();
+//    byte[] array = this.ledger.getKeyPair().getPublic().getEncoded();
+//    String hexed = new String(Hex.encodeHex(array));
+//    byte[] unhexed = Hex.decodeHex(hexed);
+//    PublicKey decodedKey = kf.generatePublic(new X509EncodedKeySpec(array));
+    this.localPort = ipAddress.getPort();
     IPAddress localIp = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     this.ipService = new IPService(localIp);
     this.blockService = new BlockService();
@@ -66,9 +67,9 @@ public class LedgerController {
       post("", ((request, response) -> {
         response.type(ResponseTypeConstants.JSON);
         try {
-          IpDTO ipDTO = new Gson().fromJson(request.body(), IpDTO.class);
-          String ip = ipDTO.getIp();
-          String port = ipDTO.getPort();
+          IPAddress ipAddress = new Gson().fromJson(request.body(), IPAddress.class);
+          String ip = ipAddress.getIp();
+          String port = ipAddress.getPort();
           LOGGER.log(Level.INFO, "POST /addr - Request IP - {0}:{1}", new String[]{ip, port});
           IPAddress newAddress = IPAddress.builder().ip(ip).port(port).build();
           if (!ledger.getIpAddresses().contains(newAddress)) {
@@ -91,11 +92,11 @@ public class LedgerController {
     path("/getblocks", () -> {
       get("", (request, response) -> {
         response.type(ResponseTypeConstants.JSON);
-        return new Gson().toJsonTree(blockService.blockChainLedgerFromBlock(ledger, null));
+        return new Gson().toJsonTree(blockService.getBlocksAfterHash(ledger, null));
       });
       get("/:hash", (request, response) -> {
         response.type(ResponseTypeConstants.JSON);
-        return new Gson().toJsonTree(blockService.blockChainLedgerFromBlock(ledger, request.params(":hash")));
+        return new Gson().toJsonTree(blockService.getBlocksAfterHash(ledger, request.params(":hash")));
       });
     });
   }
@@ -104,10 +105,11 @@ public class LedgerController {
     path("/getdata", () ->
         get("/:hash", ((request, response) -> {
           response.type(ResponseTypeConstants.JSON);
-          return new Gson().toJsonTree(blockService.blockChainTransaction(ledger, request.params(":hash")));
+          return new Gson().toJsonTree(blockService.getBlockByHash(ledger, request.params(":hash")));
         })));
   }
 
+  // remove/rework
   private void mapTransactions() {
     path("/addtransaction", () ->
         post("", (((request, response) -> {
@@ -115,6 +117,7 @@ public class LedgerController {
           try {
             UnsignedTransaction transaction = new Gson().fromJson(request.body(), UnsignedTransaction.class);
             SignedTransaction signedTransaction = blockService.signTransaction(transaction, ledger.getKeyPair().getPrivate());
+            System.out.println(new Gson().toJson(signedTransaction));;
             Block block = blockService.addTransaction(ledger, signedTransaction);
             if (block != null) blockService.shareBlock(ledger, block); // TODO fix block sharing
             response.status(200);// TODO mine block AFTER sending 200
@@ -136,16 +139,17 @@ public class LedgerController {
         post("", ((request, response) -> {
           response.type(ResponseTypeConstants.JSON);
           try {
-            // check if signed or unsigned transaction
-            //
-
-
-            BlockDTO blockDTO = new Gson().fromJson(request.body(), BlockDTO.class);
+            // TODO verify signature, if valid add else drop
+            SignedTransaction transaction = new Gson().fromJson(request.body(), SignedTransaction.class);
+            boolean verified = blockService.verifyTransaction(transaction);
+            if (verified) ledger.addTransaction(transaction);
+            BlockDTO blockDTO = new Gson().fromJson(request.body(), BlockDTO.class); // TODO already in another block etc
             blockService.generateNewTransaction(ledger, blockDTO);
             response.status(200);
             return new Gson().toJsonTree(Status.builder()
-                .statusType("Success")
-                .statusMessage("Transaction added to ledger").build());
+                .statusType(verified ? "Success" : "Fail")
+                .statusMessage(verified ? "Transaction added to ledger" : "Transaction signature could not be verified")
+                .build());
           } catch (Exception e) {
             response.status(400);
             return new Gson().toJsonTree(Status.builder()

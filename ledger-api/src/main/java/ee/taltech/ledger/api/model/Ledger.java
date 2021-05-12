@@ -12,7 +12,7 @@ import java.util.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Ledger {
-  public static final int MAX_TRANSACTIONS_PER_BLOCK = 8;
+  public static final int MAX_TRANSACTIONS_PER_BLOCK = 7;
 
   @Setter
   private HashSet<IPAddress> ipAddresses = new HashSet<>();
@@ -20,6 +20,7 @@ public class Ledger {
   @Setter
   private KeyPair keyPair;
 
+  @Setter
   private HashSet<SignedTransaction> transactions = new HashSet<>();
 
   @Setter
@@ -37,5 +38,9 @@ public class Ledger {
 
   public void addTransaction(SignedTransaction transaction) {
     transactions.add(transaction);
+  }
+
+  public void clearTransactions() {
+    transactions.clear();
   }
 }

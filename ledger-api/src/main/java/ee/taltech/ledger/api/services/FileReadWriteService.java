@@ -23,8 +23,7 @@ public class FileReadWriteService {
 
   public FileReadWriteService(IPAddress ip) {
     String path = "./data/";
-    String fileName = ip.getPort() + "-" + ip.getIp() + ".txt";
-    this.portIpFile = path + fileName;
+    this.portIpFile = path + ip.getPort() + "-" + ip.getIp() + ".txt";;
     try {
       Files.createDirectories(Paths.get(path));
       File output = new File(portIpFile);

@@ -11,10 +11,8 @@ import okhttp3.Response;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.Map.Entry;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,53 +28,45 @@ public class BootService extends BaseService {
     IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     LOGGER.log(Level.INFO, "LOCAL: {0}:{1}", new String[]{local.getIp(), local.getPort()});
 
-    ipService.updateIPAddressesFromFile(ledger);
-    List<IPAddress> newIpAddresses = new ArrayList<>(ledger.getIpAddresses());
+    List<IPAddress> savedNodes = new ArrayList<>(ipService.loadSavedIPs());
+    List<IPAddress> fallbackIPs = IPService.loadFallbackIPs();
+    List<IPAddress> knownNodes = new ArrayList<>();
 
-    List<IPAddress> fallbackIPs = FileReadWriteService.getFallbackIPs();
-    if (fallbackIPs != null && !fallbackIPs.isEmpty()) newIpAddresses.addAll(fallbackIPs);
+    if (fallbackIPs != null && !fallbackIPs.isEmpty()) savedNodes.addAll(fallbackIPs);
 
-    for (IPAddress ipAddress : !ledger.getIpAddresses().isEmpty() ? ledger.getIpAddresses()
-        : fallbackIPs != null ? fallbackIPs : new ArrayList<IPAddress>()) {
+    for (IPAddress ipAddress : savedNodes) {
       try {
         Response response = sendGetRequest(ipRequestURL(ipAddress));
         if (response.isSuccessful() && !local.equals(ipAddress)) {
           ledger.addIPAddress(ipAddress);
           ipService.writeIPAddressesToFileAndLedger(ledger, ipAddress);
-          addNewIpAddresses(newIpAddresses, response, localPort);
+          if (!knownNodes.contains(ipAddress)) knownNodes.add(ipAddress);
+          addNewIpAddresses(knownNodes, response, local);
         }
         response.close();
       } catch (IOException e) {
         LOGGER.log(Level.WARNING, "Error in BootService.runStartup: {0}", e.getMessage());
       }
     }
-    for (IPAddress address : newIpAddresses) {
-      if (!(address.getIp().equals(local.getIp()) && address.getPort().equals(local.getPort()))) {
-        LOGGER.log(Level.INFO, "Local checking blocks from IP {0}", address.toPlainString());
-        MediaType jsonMedia = MediaType.parse("application/json; charset=utf-8");
-        String json = "{\"ip\":\"" +
-            local.getIp() +
-            "\",\"port\":\"" +
-            local.getPort() +
-            "\"}";
-        try {
-          Response postResponse = sendPostRequest(ipRequestURL(address),
-              RequestBody.create(json, jsonMedia));
-          Response blockResponse = sendGetRequest(blockRequestUrl(address));
-          if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
-            LOGGER.info("BootService.runStartup: Two way binding successful");
-            ledger.addIPAddress(address);
-            ipService.writeIPAddressesToFileAndLedger(ledger, address);
-            addNewBlocks(ledger, blockResponse);
-          }
-          postResponse.close();
-          blockResponse.close();
-        } catch (IOException e) {
-          LOGGER.log(Level.WARNING, "Error in BootService.runStartup: {0}", e.getMessage());
+    for (IPAddress address : knownNodes) {
+      LOGGER.log(Level.INFO, "Local checking blocks from IP {0}", address.toPlainString());
+      try {
+        Response postResponse = sendPostRequest(ipRequestURL(address),
+            RequestBody.create(gson.toJson(local), MediaType.parse("application/json; charset=utf-8")));
+        Response blockResponse = sendGetRequest(blockRequestUrl(address));
+        if (postResponse.isSuccessful() && blockResponse.isSuccessful()) {
+          LOGGER.info("BootService.runStartup: Two way binding successful");
+          ledger.addIPAddress(address);
+          ipService.writeIPAddressesToFileAndLedger(ledger, address);
+          addNewBlocks(ledger, blockResponse);
         }
+        postResponse.close();
+        blockResponse.close();
+      } catch (IOException e) {
+        LOGGER.log(Level.WARNING, "Error in BootService.runStartup: {0}", e.getMessage());
       }
     }
-    findLastHashOnBootBlockchainIngest(ledger);
+    setLedgerLastHash(ledger);
   }
 
   private void addNewBlocks(Ledger ledger, Response blockResponse) throws IOException {
@@ -94,8 +84,7 @@ public class BootService extends BaseService {
     }
   }
 
-  private void addNewIpAddresses(List<IPAddress> newIpAddresses, Response response, String localPort) throws IOException {
-    IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
+  private void addNewIpAddresses(List<IPAddress> newIpAddresses, Response response, IPAddress local) throws IOException {
     List<IPAddress> ipAddresses = mapper.readValue(Objects.requireNonNull(response.body()).byteStream(),
         mapper.getTypeFactory().constructCollectionType(List.class, IPAddress.class));
     newIpAddresses.addAll(
@@ -105,17 +94,15 @@ public class BootService extends BaseService {
     );
   }
 
-  private void findLastHashOnBootBlockchainIngest(Ledger ledger) {
-    HashingService hashingService = new HashingService();
-    String genesisHash = hashingService.genesisHash();
-    if (ledger.getBlocks().containsKey(genesisHash)) {
-      String hash = hashingService.generateSHA256Hash(ledger.getBlocks().get(genesisHash));
-      while (ledger.getBlocks().containsKey(hash)) {
-        hash = hashingService.generateSHA256Hash(ledger.getBlocks().get(hash));
-      }
-      ledger.setLastHash(hash);
+  private void setLedgerLastHash(Ledger ledger) {
+    if (ledger.getBlocks().isEmpty()) {
+      BlockService.createGenesisBlock(ledger);
+      LOGGER.log(Level.INFO, "Created genesis block with hash {0}", ledger.getLastHash());
     } else {
-      ledger.setLastHash(genesisHash);
+      ledger.setLastHash(ledger.getBlocks().entrySet().stream()
+          .max(Comparator.comparingInt((Entry<String, Block> e) -> e.getValue().getNr()))
+          .map(entry -> entry.getValue().getHash()).orElse("0"));
+      LOGGER.log(Level.INFO, "Set ledgers last hash to {0}", ledger.getLastHash());
     }
   }
 }

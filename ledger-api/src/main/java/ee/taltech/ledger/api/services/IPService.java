@@ -5,6 +5,7 @@ import ee.taltech.ledger.api.model.Ledger;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
 
 public class IPService {
 
@@ -14,12 +15,16 @@ public class IPService {
     this.readWriteService = new FileReadWriteService(ip);
   }
 
-  public void updateIPAddressesFromFile(Ledger ledger) throws IOException {
-    ledger.setIpAddresses(new HashSet<>(readWriteService.getIPs()));
-  }
-
   public void writeIPAddressesToFileAndLedger(Ledger ledger, IPAddress ipAddress) {
     ledger.addIPAddress(ipAddress);
-    readWriteService.writeIPs(new HashSet<IPAddress>(ledger.getIpAddresses()));
+    readWriteService.writeIPs(new HashSet<>(ledger.getIpAddresses()));
+  }
+
+  public List<IPAddress> loadSavedIPs() throws IOException {
+    return readWriteService.getIPs();
+  }
+
+  public static List<IPAddress> loadFallbackIPs() {
+    return FileReadWriteService.getFallbackIPs();
   }
 }
