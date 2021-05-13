@@ -55,7 +55,9 @@ public class LedgerController {
       get("", ((request, response) -> {
         response.type(ResponseTypeConstants.JSON);
         List<IPAddress> ipAddressList = ledger.getIpAddresses();
-        LOGGER.log(Level.INFO, "GET /addr - Request IP - {0}:{1}", new String[]{request.ip(), String.valueOf(request.port())});
+        LOGGER.log(Level.INFO,
+            "GET /addr - Request IP - {0}:{1}",
+            new String[]{request.ip(), String.valueOf(request.port())});
         return new Gson().toJson(ipAddressList);
       }));
       post("", ((request, response) -> {

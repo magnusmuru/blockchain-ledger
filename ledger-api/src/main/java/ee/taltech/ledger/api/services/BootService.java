@@ -79,7 +79,8 @@ public class BootService extends BaseService {
 
   private void addNewBlocks(Ledger ledger, Response blockResponse) throws IOException {
     try {
-      List<Block> chainBlocks = new ArrayList<>(mapper.readValue(Objects.requireNonNull(blockResponse.body()).byteStream(),
+      List<Block> chainBlocks = new ArrayList<>(mapper.readValue(
+          Objects.requireNonNull(blockResponse.body()).byteStream(),
           mapper.getTypeFactory().constructCollectionType(List.class, Block.class)));
       chainBlocks.stream()
           .filter(block -> !ledger.getBlocks().containsKey(block.getHash()))
@@ -89,7 +90,9 @@ public class BootService extends BaseService {
     }
   }
 
-  private void addNewIpAddresses(List<IPAddress> newIpAddresses, Response response, String localPort) throws IOException {
+  private void addNewIpAddresses(List<IPAddress> newIpAddresses,
+                                 Response response,
+                                 String localPort) throws IOException {
     IPAddress local = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     List<IPAddress> ipAddresses = mapper.readValue(Objects.requireNonNull(response.body()).byteStream(),
         mapper.getTypeFactory().constructCollectionType(List.class, IPAddress.class));

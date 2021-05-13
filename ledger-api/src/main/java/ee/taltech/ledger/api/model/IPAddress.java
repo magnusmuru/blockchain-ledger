@@ -33,7 +33,7 @@ public class IPAddress {
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof IPAddress) {
-      return (((IPAddress) obj).getIp().equals(this.getIp()) && ((IPAddress) obj).getPort().equals(this.getPort()));
+      return ((IPAddress) obj).getIp().equals(this.getIp()) && ((IPAddress) obj).getPort().equals(this.getPort());
     } else {
       return super.equals(obj);
     }
