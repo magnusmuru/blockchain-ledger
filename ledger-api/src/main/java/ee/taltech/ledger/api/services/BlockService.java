@@ -1,8 +1,6 @@
 package ee.taltech.ledger.api.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import ee.taltech.ledger.api.dto.BlockDTO;
 import ee.taltech.ledger.api.model.*;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
@@ -24,7 +22,6 @@ import java.util.stream.Collectors;
 public class BlockService extends BaseService {
   private static final Logger LOGGER = Logger.getLogger(BlockService.class.getName());
 
-  private final HashingService hashingService = new HashingService();
   private static final Double COINBASE = 1.0;
 
   public Block getBlockByHash(Ledger ledger, String hash) {
@@ -38,25 +35,22 @@ public class BlockService extends BaseService {
         .collect(Collectors.toList());
   }
 
-  public List<Block> getAllBlocks(Ledger ledger) {
-    return ledger.getBlocks().values().stream()
-        .sorted(Comparator.comparingInt(Block::getNr))
-        .collect(Collectors.toList());
+  public void shareTransaction(Ledger ledger, SignedTransaction transaction) {
+    if (transaction != null) {
+      Gson gson = new Gson();
+      for (IPAddress address : ledger.getIpAddresses()) {
+        try {
+          Response response = sendPostRequest(transactionSharingUrl(address), RequestBody.create(gson.toJson(transaction),
+              MediaType.parse("application/json; charset=utf-8")));
+          response.close();
+        } catch (IOException e) {
+          LOGGER.log(Level.WARNING, "Error in BlockService.shareTransaction: {0}", e.getMessage());
+        }
+      }
+    }
   }
 
-  public void generateNewTransaction(Ledger ledger, BlockDTO blockDTO) throws IOException {
-    Block transactionBlock = blockDTO.toBlock();
-
-    transactionBlock.setHash(
-        ledger.getLastHash() == null
-            ? hashingService.genesisHash()
-            : ledger.getLastHash()
-    );
-
-    this.shareBlock(ledger, transactionBlock);
-  }
-
-  public void shareBlock(Ledger ledger, Block block)  {
+  public void shareBlock(Ledger ledger, Block block) {
     if (block != null) {
       Gson gson = new Gson();
       for (IPAddress address : ledger.getIpAddresses()) {
@@ -94,9 +88,9 @@ public class BlockService extends BaseService {
       KeyFactory kf = KeyFactory.getInstance("RSA");
       PublicKey publicKey = kf.generatePublic(new X509EncodedKeySpec(Hex.decodeHex(transaction.getTransaction().getFrom())));
       sg.initVerify(publicKey);
-      sg.update(gson.toJson(transaction).getBytes(StandardCharsets.UTF_8));
+      sg.update(gson.toJson(transaction.getTransaction()).getBytes(StandardCharsets.UTF_8));
       verified = sg.verify(Hex.decodeHex(transaction.getSignature()));
-      LOGGER.log(Level.INFO, "Transfer verification completed with outcome verified == {0}", verified );
+      LOGGER.log(Level.INFO, "Transfer verification completed with outcome verified == {0}", verified);
     } catch (NoSuchAlgorithmException | DecoderException | SignatureException | InvalidKeySpecException | InvalidKeyException e) {
       LOGGER.log(Level.SEVERE, "An error occured during transaction verification: {0}", e.getMessage());
     }
@@ -113,29 +107,63 @@ public class BlockService extends BaseService {
     return null;
   }
 
-  public boolean isTransactionInPreviousBlocks(SignedTransaction transaction) {
-    // TODO
-    return true;
+  public boolean isTransactionInPreviousBlocks(Ledger ledger, SignedTransaction transaction) {
+    return ledger.getBlocks().values().stream()
+        .flatMap(block -> block.getTransactions().stream())
+        .anyMatch(tr -> tr.equals(transaction));
   }
 
   public boolean areAmountsOkay(Ledger ledger, List<SignedTransaction> transactions) {
-    // TODO
+    // TODO summade kontroll
+    HashMap<String, Double> currentBalances = new HashMap<>();
+    transactions.stream()
+        .sorted(Comparator.comparing(st -> ZonedDateTime.parse(st.getTransaction().getTimestamp())))
+        .forEach(transaction -> {
+          if (currentBalances.containsKey(transaction.getTransaction().getFrom())) {
+            currentBalances.put(transaction.getTransaction().getFrom(),
+                currentBalances.get(transaction.getTransaction().getFrom()) - transaction.getTransaction().getSum());
+          } else {
+            currentBalances.put(transaction.getTransaction().getFrom(),
+                -1.0 * transaction.getTransaction().getSum());
+          }
+
+          if (currentBalances.containsKey(transaction.getTransaction().getTo())) {
+            currentBalances.put(transaction.getTransaction().getTo(),
+                currentBalances.get(transaction.getTransaction().getTo()) + transaction.getTransaction().getSum());
+          } else {
+            currentBalances.put(transaction.getTransaction().getTo(),
+                transaction.getTransaction().getSum());
+          }
+        });
+    HashMap<String, Double> blockchainBalances = new HashMap<>();
+    List<SignedTransaction> all = ledger.getBlocks().values().stream()
+        .flatMap(block -> block.getTransactions().stream())
+        .collect(Collectors.toList());
     return true;
   }
 
 
   private Block createNewBlock(Ledger ledger) {
-    List<SignedTransaction> transactions = new ArrayList<>(ledger.getTransactions());
-    // TODO bloki kontrollid
-    // verifySignatures() .filter(this::verifyTransaction)
-    // verifyAmounts()
-    // verifyAlreadyExists()
+    List<SignedTransaction> transactions = ledger.getTransactions().stream()
+        .filter(this::verifyTransaction) //
+        .filter(transaction -> !isTransactionInPreviousBlocks(ledger, transaction))
+        //.filter(this::areAmountsOkay) // verifyAmounts()
+        .collect(Collectors.toList());
+    transactions.add(SignedTransaction.builder()
+        .signature("")
+        .transaction(UnsignedTransaction.builder()
+            .from("0")
+            .to(new String(Hex.encodeHex(ledger.getKeyPair().getPublic().getEncoded())))
+            .sum(COINBASE)
+            .timestamp(ZonedDateTime.now().toString())
+            .build())
+        .build());
     if (ledger.getLastHash() == null) ledger.setLastHash(HashingService.GENESIS_HASH);
     Block newBlock = Block.builder()
         .nr(ledger.getBlocks().get(ledger.getLastHash()) != null ? ledger.getBlocks().get(ledger.getLastHash()).getNr() + 1 : 1)
         .previousHash(ledger.getLastHash())
         .timestamp(ZonedDateTime.now().toString())
-        .creator(ledger.getKeyPair().getPublic().toString())
+        .creator(new String(Hex.encodeHex(ledger.getKeyPair().getPublic().getEncoded())))
         .count(transactions.size())
         .transactions(transactions)
         .merkleRoot(findMerkleRoot(ledger.getTransactions()))
@@ -172,10 +200,11 @@ public class BlockService extends BaseService {
     String blockString = gson.toJson(block, Block.class);
     int nonce = 0;
     String hash = HashingService.generateSHA256Hash(blockString + nonce);
+    LOGGER.log(Level.INFO, "Mining...");
     while (!hash.startsWith(HashingService.HASH_PREFIX)) {
       nonce++;
       hash = HashingService.generateSHA256Hash(blockString + nonce);
-      LOGGER.log(Level.INFO, "Mining, current nonce: {0}, hash: {1}", new String[]{Integer.toString(nonce), hash});
+      //LOGGER.log(Level.INFO, "Mining, current nonce: {0}, hash: {1}", new String[]{Integer.toString(nonce), hash});
     }
     LOGGER.log(Level.INFO, "Finished mining, found nonce: {0}, hash: {1}", new String[]{Integer.toString(nonce), hash});
     block.setNonce(nonce);
@@ -204,5 +233,11 @@ public class BlockService extends BaseService {
     findNonceAndHash(genesisBlock);
     ledger.addBlock(genesisBlock);
     ledger.setLastHash(genesisBlock.getHash());
+  }
+
+  public boolean addBlock(Ledger ledger, Block block) {
+    // TODO õige paralleelbloki valimine
+    ledger.addBlock(block);
+    return true;
   }
 }

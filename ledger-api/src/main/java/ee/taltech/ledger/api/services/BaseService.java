@@ -38,4 +38,8 @@ public class BaseService {
   protected String blockSharingUrl(IPAddress ipAddress) {
     return String.format("http://%s:%s/block/%s", ipAddress.getIp(), ipAddress.getPort(), API_KEY);
   }
+
+  protected String transactionSharingUrl(IPAddress ipAddress) {
+    return String.format("http://%s:%s/transaction", ipAddress.getIp(), ipAddress.getPort());
+  }
 }
