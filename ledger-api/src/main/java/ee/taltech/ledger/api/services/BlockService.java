@@ -124,11 +124,11 @@ public class BlockService extends BaseService {
           if (tx.getTransaction().getFrom().equals(transaction.getTransaction().getFrom())) {
             balance.updateAndGet(v -> v - transaction.getTransaction().getSum());
           }
-          if (tx.getTransaction().getTo().equals(transaction.getTransaction().getTo())) {
+          if (tx.getTransaction().getTo().equals(transaction.getTransaction().getFrom())) {
             balance.updateAndGet(v -> v + transaction.getTransaction().getSum());
           }
         });
-    return balance.get() >= 0.0;
+    return balance.get() >= transaction.getTransaction().getSum();
   }
 
 
