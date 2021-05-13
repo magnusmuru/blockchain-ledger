@@ -5,13 +5,11 @@ import ee.taltech.ledger.api.model.*;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
-import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -31,7 +29,9 @@ public class BlockService extends BaseService {
 
   public List<Block> getBlocksAfterHash(Ledger ledger, String hash) {
     return ledger.getBlocks().values().stream()
-        .filter(block -> hash == null || (ledger.getBlocks().containsKey(hash) && block.getNr() >= ledger.getBlocks().get(hash).getNr()))
+        .filter(block -> hash == null
+            || (ledger.getBlocks().containsKey(hash)
+            && block.getNr() >= ledger.getBlocks().get(hash).getNr()))
         .sorted(Comparator.comparingInt(Block::getNr))
         .collect(Collectors.toList());
   }
@@ -41,8 +41,9 @@ public class BlockService extends BaseService {
       Gson gson = new Gson();
       for (IPAddress address : ledger.getIpAddresses()) {
         try {
-          Response response = sendPostRequest(transactionSharingUrl(address), RequestBody.create(gson.toJson(transaction),
-              MediaType.parse("application/json; charset=utf-8")));
+          Response response = sendPostRequest(transactionSharingUrl(address),
+              RequestBody.create(gson.toJson(transaction),
+                  MediaType.parse("application/json; charset=utf-8")));
           response.close();
         } catch (IOException e) {
           LOGGER.log(Level.WARNING, "Error in BlockService.shareTransaction: {0}", e.getMessage());
@@ -87,12 +88,13 @@ public class BlockService extends BaseService {
       Gson gson = new Gson();
       Signature sg = Signature.getInstance("SHA256withRSA");
       KeyFactory kf = KeyFactory.getInstance("RSA");
-      PublicKey publicKey = kf.generatePublic(new X509EncodedKeySpec(Hex.decodeHex(transaction.getTransaction().getFrom())));
+      PublicKey publicKey = kf.generatePublic(new X509EncodedKeySpec(
+          Hex.decodeHex(transaction.getTransaction().getFrom())));
       sg.initVerify(publicKey);
       sg.update(gson.toJson(transaction.getTransaction()).getBytes(StandardCharsets.UTF_8));
       verified = sg.verify(Hex.decodeHex(transaction.getSignature()));
       LOGGER.log(Level.INFO, "Transfer verification completed with outcome verified == {0}", verified);
-    } catch (NoSuchAlgorithmException | DecoderException | SignatureException | InvalidKeySpecException | InvalidKeyException e) {
+    } catch (Exception e) {
       LOGGER.log(Level.SEVERE, "An error occured during transaction verification: {0}", e.getMessage());
     }
     return verified;
@@ -149,7 +151,9 @@ public class BlockService extends BaseService {
         .build());
     if (ledger.getLastHash() == null) ledger.setLastHash(HashingService.GENESIS_HASH);
     Block newBlock = Block.builder()
-        .nr(ledger.getBlocks().get(ledger.getLastHash()) != null ? ledger.getBlocks().get(ledger.getLastHash()).getNr() + 1 : 1)
+        .nr(ledger.getBlocks().get(ledger.getLastHash()) != null
+            ? ledger.getBlocks().get(ledger.getLastHash()).getNr() + 1
+            : 1)
         .previousHash(ledger.getLastHash())
         .timestamp(ZonedDateTime.now().toString())
         .creator(new String(Hex.encodeHex(ledger.getKeyPair().getPublic().getEncoded())))
@@ -195,7 +199,9 @@ public class BlockService extends BaseService {
       hash = HashingService.generateSHA256Hash(blockString + nonce);
       //LOGGER.log(Level.INFO, "Mining, current nonce: {0}, hash: {1}", new String[]{Integer.toString(nonce), hash});
     }
-    LOGGER.log(Level.INFO, "Finished mining, found nonce: {0}, hash: {1}", new String[]{Integer.toString(nonce), hash});
+    LOGGER.log(Level.INFO,
+        "Finished mining, found nonce: {0}, hash: {1}",
+        new String[]{Integer.toString(nonce), hash});
     block.setNonce(nonce);
     block.setHash(hash);
   }
@@ -225,46 +231,53 @@ public class BlockService extends BaseService {
   }
 
   public boolean addBlock(Ledger ledger, Block block) {
-    if (ledger.getBlocks().containsKey(block.getHash())) {
+    Map<String, Block> ledgerBlocks = ledger.getBlocks();
+    if (ledgerBlocks.containsKey(block.getHash())) {
       return false;
     }
-    if (ledger.getBlocks().get(ledger.getLastHash()).getNr() > block.getNr()) {
+    Block blockByLastHash = ledgerBlocks.get(ledger.getLastHash());
+    if (blockByLastHash.getNr() > block.getNr()) {
       return false;
-    } else if ((ledger.getBlocks().get(ledger.getLastHash()).getNr() < block.getNr())) {
-      ledger.getBlocks().remove(ledger.getLastHash());
-      ledger.setLastHash(block.getHash());
-      ledger.addBlock(block);
+    } else if ((blockByLastHash.getNr() < block.getNr())) {
+      removeLastHashBlockAndAddNew(ledger, block);
       return true;
     } else {
       // vali kus rohkem transaktsioone VÕI
-      if (ledger.getBlocks().get(ledger.getLastHash()).getTransactions().size() > block.getTransactions().size()) {
+      if (blockByLastHash.getTransactions().size() > block.getTransactions().size()) {
         return false;
-      } else if (ledger.getBlocks().get(ledger.getLastHash()).getTransactions().size() < block.getTransactions().size()) {
-        ledger.getBlocks().remove(ledger.getLastHash());
-        ledger.setLastHash(block.getHash());
-        ledger.addBlock(block);
+      } else if (blockByLastHash.getTransactions().size() < block.getTransactions().size()) {
+        removeLastHashBlockAndAddNew(ledger, block);
         return true;
       } else {
-        // vali kus uuem timestamp (või eelistada vanema timestampiga) VÕI
-        if (ZonedDateTime.parse(ledger.getBlocks().get(ledger.getLastHash()).getTimestamp()).isBefore(ZonedDateTime.parse(block.getTimestamp()))) {
-          return false;
-        } else if (ZonedDateTime.parse(ledger.getBlocks().get(ledger.getLastHash()).getTimestamp()).isAfter(ZonedDateTime.parse(block.getTimestamp()))) {
-          ledger.getBlocks().remove(ledger.getLastHash());
-          ledger.setLastHash(block.getHash());
-          ledger.addBlock(block);
-          return true;
-        } else {
-          // vali hashide stringivõrdlus, vali väiksem
-          if (ledger.getBlocks().get(ledger.getLastHash()).getHash().compareTo(block.getHash()) < 0) {
-            return false;
-          } else {
-            ledger.getBlocks().remove(ledger.getLastHash());
-            ledger.setLastHash(block.getHash());
-            ledger.addBlock(block);
-            return true;
-          }
-        }
+        return extracted(ledger, block, ledgerBlocks);
       }
     }
+  }
+
+  private boolean extracted(Ledger ledger, Block block, Map<String, Block> ledgerBlocks) {
+    Block blockByLastHash = ledgerBlocks.get(ledger.getLastHash());
+    ZonedDateTime lastHashTimestamp = ZonedDateTime.parse(blockByLastHash.getTimestamp());
+    ZonedDateTime blockTimestamp = ZonedDateTime.parse(block.getTimestamp());
+    // vali kus uuem timestamp (või eelistada vanema timestampiga) VÕI
+    if (lastHashTimestamp.isBefore(blockTimestamp)) {
+      return false;
+    } else if (lastHashTimestamp.isAfter(blockTimestamp)) {
+      removeLastHashBlockAndAddNew(ledger, block);
+      return true;
+    } else {
+      // vali hashide stringivõrdlus, vali väiksem
+      if (blockByLastHash.getHash().compareTo(block.getHash()) < 0) {
+        return false;
+      } else {
+        removeLastHashBlockAndAddNew(ledger, block);
+        return true;
+      }
+    }
+  }
+
+  private void removeLastHashBlockAndAddNew(Ledger ledger, Block block) {
+    ledger.getBlocks().remove(ledger.getLastHash());
+    ledger.setLastHash(block.getHash());
+    ledger.addBlock(block);
   }
 }

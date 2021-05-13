@@ -2,7 +2,6 @@ package ee.taltech.ledger.api.services;
 
 import com.google.common.hash.Hashing;
 import com.google.gson.Gson;
-import ee.taltech.ledger.api.model.Block;
 import ee.taltech.ledger.api.model.SignedTransaction;
 
 import java.nio.charset.StandardCharsets;
