@@ -15,6 +15,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -107,47 +108,35 @@ public class BlockService extends BaseService {
     return null;
   }
 
-  public boolean isTransactionInPreviousBlocks(Ledger ledger, SignedTransaction transaction) {
+  public boolean isTransactionNotInPreviousBlocks(Ledger ledger, SignedTransaction transaction) {
     return ledger.getBlocks().values().stream()
         .flatMap(block -> block.getTransactions().stream())
-        .anyMatch(tr -> tr.equals(transaction));
+        .noneMatch(tr -> tr.equals(transaction));
   }
 
-  public boolean areAmountsOkay(Ledger ledger, List<SignedTransaction> transactions) {
-    // TODO summade kontroll
-    HashMap<String, Double> currentBalances = new HashMap<>();
-    transactions.stream()
-        .sorted(Comparator.comparing(st -> ZonedDateTime.parse(st.getTransaction().getTimestamp())))
-        .forEach(transaction -> {
-          if (currentBalances.containsKey(transaction.getTransaction().getFrom())) {
-            currentBalances.put(transaction.getTransaction().getFrom(),
-                currentBalances.get(transaction.getTransaction().getFrom()) - transaction.getTransaction().getSum());
-          } else {
-            currentBalances.put(transaction.getTransaction().getFrom(),
-                -1.0 * transaction.getTransaction().getSum());
+  public boolean areAmountsOkay(Ledger ledger, SignedTransaction transaction) {
+    AtomicReference<Double> balance = new AtomicReference<>(0.0);
+    ledger.getBlocks().values().stream()
+        .flatMap(block -> block.getTransactions().stream())
+        .filter(tx -> tx.getTransaction().getFrom().equals(transaction.getTransaction().getFrom())
+            || tx.getTransaction().getTo().equals(transaction.getTransaction().getTo()))
+        .forEach(tx -> {
+          if (tx.getTransaction().getFrom().equals(transaction.getTransaction().getFrom())) {
+            balance.updateAndGet(v -> v - transaction.getTransaction().getSum());
           }
-
-          if (currentBalances.containsKey(transaction.getTransaction().getTo())) {
-            currentBalances.put(transaction.getTransaction().getTo(),
-                currentBalances.get(transaction.getTransaction().getTo()) + transaction.getTransaction().getSum());
-          } else {
-            currentBalances.put(transaction.getTransaction().getTo(),
-                transaction.getTransaction().getSum());
+          if (tx.getTransaction().getTo().equals(transaction.getTransaction().getTo())) {
+            balance.updateAndGet(v -> v + transaction.getTransaction().getSum());
           }
         });
-    HashMap<String, Double> blockchainBalances = new HashMap<>();
-    List<SignedTransaction> all = ledger.getBlocks().values().stream()
-        .flatMap(block -> block.getTransactions().stream())
-        .collect(Collectors.toList());
-    return true;
+    return balance.get() >= 0.0;
   }
 
 
   private Block createNewBlock(Ledger ledger) {
     List<SignedTransaction> transactions = ledger.getTransactions().stream()
-        .filter(this::verifyTransaction) //
-        .filter(transaction -> !isTransactionInPreviousBlocks(ledger, transaction))
-        //.filter(this::areAmountsOkay) // verifyAmounts()
+        .filter(this::verifyTransaction)
+        .filter(transaction -> areAmountsOkay(ledger, transaction))
+        .filter(transaction -> isTransactionNotInPreviousBlocks(ledger, transaction))
         .collect(Collectors.toList());
     transactions.add(SignedTransaction.builder()
         .signature("")
@@ -236,8 +225,46 @@ public class BlockService extends BaseService {
   }
 
   public boolean addBlock(Ledger ledger, Block block) {
-    // TODO õige paralleelbloki valimine
-    ledger.addBlock(block);
-    return true;
+    if (ledger.getBlocks().containsKey(block.getHash())) {
+      return false;
+    }
+    if (ledger.getBlocks().get(ledger.getLastHash()).getNr() > block.getNr()) {
+      return false;
+    } else if ((ledger.getBlocks().get(ledger.getLastHash()).getNr() < block.getNr())) {
+      ledger.getBlocks().remove(ledger.getLastHash());
+      ledger.setLastHash(block.getHash());
+      ledger.addBlock(block);
+      return true;
+    } else {
+      // vali kus rohkem transaktsioone VÕI
+      if (ledger.getBlocks().get(ledger.getLastHash()).getTransactions().size() > block.getTransactions().size()) {
+        return false;
+      } else if (ledger.getBlocks().get(ledger.getLastHash()).getTransactions().size() < block.getTransactions().size()) {
+        ledger.getBlocks().remove(ledger.getLastHash());
+        ledger.setLastHash(block.getHash());
+        ledger.addBlock(block);
+        return true;
+      } else {
+        // vali kus uuem timestamp (või eelistada vanema timestampiga) VÕI
+        if (ZonedDateTime.parse(ledger.getBlocks().get(ledger.getLastHash()).getTimestamp()).isBefore(ZonedDateTime.parse(block.getTimestamp()))) {
+          return false;
+        } else if (ZonedDateTime.parse(ledger.getBlocks().get(ledger.getLastHash()).getTimestamp()).isAfter(ZonedDateTime.parse(block.getTimestamp()))) {
+          ledger.getBlocks().remove(ledger.getLastHash());
+          ledger.setLastHash(block.getHash());
+          ledger.addBlock(block);
+          return true;
+        } else {
+          // vali hashide stringivõrdlus, vali väiksem
+          if (ledger.getBlocks().get(ledger.getLastHash()).getHash().compareTo(block.getHash()) < 0) {
+            return false;
+          } else {
+            ledger.getBlocks().remove(ledger.getLastHash());
+            ledger.setLastHash(block.getHash());
+            ledger.addBlock(block);
+            return true;
+          }
+        }
+      }
+    }
   }
 }

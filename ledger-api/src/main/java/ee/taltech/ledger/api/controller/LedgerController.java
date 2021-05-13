@@ -112,7 +112,7 @@ public class LedgerController {
           try {
             UnsignedTransaction transaction = new Gson().fromJson(request.body(), UnsignedTransaction.class);
             SignedTransaction signedTransaction = blockService.signTransaction(transaction, ledger.getKeyPair().getPrivate());
-            Block block = blockService.addTransaction(ledger, signedTransaction);//TODO mine block AFTER sending 200
+            Block block = blockService.addTransaction(ledger, signedTransaction);// TODO mine block AFTER sending 200
             blockService.shareTransaction(ledger, signedTransaction);
             if (block != null) blockService.shareBlock(ledger, block);
             response.status(200);// TODO mine block AFTER sending 200
@@ -135,7 +135,7 @@ public class LedgerController {
           try {
             SignedTransaction transaction = new Gson().fromJson(request.body(), SignedTransaction.class);
             boolean verified = blockService.verifyTransaction(transaction)
-                && !blockService.isTransactionInPreviousBlocks(ledger, transaction)
+                && blockService.isTransactionNotInPreviousBlocks(ledger, transaction)
                 && !ledger.getTransactions().contains(transaction);
             if (verified) {
               Block block = blockService.addTransaction(ledger, transaction);
@@ -166,7 +166,7 @@ public class LedgerController {
           try {
             Block block = new Gson().fromJson(request.body(), Block.class);
             if (!ledger.getBlocks().containsKey(block.getHash())) {
-              boolean added = blockService.addBlock(ledger, block); // TODO paralleelbloki valimine
+              boolean added = blockService.addBlock(ledger, block); // FIXME paralleelbloki valimine
               if (added) blockService.shareBlock(ledger, block);
             }
             return new Gson().toJsonTree(Status.builder()
