@@ -118,10 +118,10 @@ public class LedgerController {
             UnsignedTransaction transaction = new Gson().fromJson(request.body(), UnsignedTransaction.class);
             SignedTransaction signedTransaction = blockService.signTransaction(transaction,
                 ledger.getKeyPair().getPrivate());
-            Block block = blockService.addTransaction(ledger, signedTransaction);// TODO mine block AFTER sending 200
             blockService.shareTransaction(ledger, signedTransaction);
+            Block block = blockService.addTransaction(ledger, signedTransaction);// mine block AFTER sending 200?
             if (block != null) blockService.shareBlock(ledger, block);
-            response.status(200);// TODO mine block AFTER sending 200
+            response.status(200);
             return new Gson().toJsonTree(Status.builder()
                 .statusType("Success")
                 .statusMessage("Transaction added to ledger").build());
@@ -144,8 +144,9 @@ public class LedgerController {
                 && blockService.isTransactionNotInPreviousBlocks(ledger, transaction)
                 && !ledger.getTransactions().contains(transaction);
             if (verified) {
-              Block block = blockService.addTransaction(ledger, transaction);
+              LOGGER.log(Level.INFO, "Verified a new transaction with signature {0}", transaction.getSignature());
               blockService.shareTransaction(ledger, transaction);
+              Block block = blockService.addTransaction(ledger, transaction);
               if (block != null) blockService.shareBlock(ledger, block);
             }
             response.status(200);
@@ -172,7 +173,7 @@ public class LedgerController {
           try {
             Block block = new Gson().fromJson(request.body(), Block.class);
             if (!ledger.getBlocks().containsKey(block.getHash())) {
-              boolean added = blockService.addBlock(ledger, block); // FIXME paralleelbloki valimine
+              boolean added = blockService.addBlock(ledger, block); // paralleelbloki valimine
               if (added) blockService.shareBlock(ledger, block);
             }
             return new Gson().toJsonTree(Status.builder()

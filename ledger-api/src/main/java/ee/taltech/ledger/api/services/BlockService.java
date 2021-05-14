@@ -93,7 +93,7 @@ public class BlockService extends BaseService {
       sg.initVerify(publicKey);
       sg.update(gson.toJson(transaction.getTransaction()).getBytes(StandardCharsets.UTF_8));
       verified = sg.verify(Hex.decodeHex(transaction.getSignature()));
-      LOGGER.log(Level.INFO, "Transfer verification completed with outcome verified == {0}", verified);
+      //LOGGER.log(Level.INFO, "Transfer verification completed with outcome verified == {0}", verified);
     } catch (Exception e) {
       LOGGER.log(Level.SEVERE, "An error occured during transaction verification: {0}", e.getMessage());
     }
@@ -121,7 +121,7 @@ public class BlockService extends BaseService {
     ledger.getBlocks().values().stream()
         .flatMap(block -> block.getTransactions().stream())
         .filter(tx -> tx.getTransaction().getFrom().equals(transaction.getTransaction().getFrom())
-            || tx.getTransaction().getTo().equals(transaction.getTransaction().getTo()))
+            || tx.getTransaction().getTo().equals(transaction.getTransaction().getFrom()))
         .forEach(tx -> {
           if (tx.getTransaction().getFrom().equals(transaction.getTransaction().getFrom())) {
             balance.updateAndGet(v -> v - transaction.getTransaction().getSum());
@@ -239,7 +239,8 @@ public class BlockService extends BaseService {
     if (blockByLastHash.getNr() > block.getNr()) {
       return false;
     } else if ((blockByLastHash.getNr() < block.getNr())) {
-      removeLastHashBlockAndAddNew(ledger, block);
+      ledger.setLastHash(block.getHash());
+      ledger.addBlock(block);
       return true;
     } else {
       // vali kus rohkem transaktsioone VÕI

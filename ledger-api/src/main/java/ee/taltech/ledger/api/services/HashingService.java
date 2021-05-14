@@ -19,9 +19,4 @@ public class HashingService {
   public static String generateSHA256Hash(String string) {
     return Hashing.sha256().hashString(string, StandardCharsets.UTF_8).toString();
   }
-
-  public String genesisHash() {
-    return Hashing.sha256().hashString(GENESIS_HASH, StandardCharsets.UTF_8).toString();
-  }
-
 }
