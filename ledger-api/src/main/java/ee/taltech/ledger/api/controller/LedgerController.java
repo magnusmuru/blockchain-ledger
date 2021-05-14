@@ -11,7 +11,8 @@ import org.apache.commons.codec.binary.Hex;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.security.*;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,7 +33,9 @@ public class LedgerController {
     kpg.initialize(2048);
     this.ledger = new Ledger();
     this.ledger.setKeyPair(kpg.generateKeyPair());
-    LOGGER.log(Level.INFO, "Created new node with public key {0}", Hex.encodeHexString(this.ledger.getKeyPair().getPublic().getEncoded()));
+    LOGGER.log(Level.INFO,
+        "Created new node with public key {0}",
+        Hex.encodeHexString(this.ledger.getKeyPair().getPublic().getEncoded()));
     this.localPort = ipAddress.getPort();
     IPAddress localIp = IPAddress.builder().ip(InetAddress.getLocalHost().getHostAddress()).port(localPort).build();
     this.ipService = new IPService(localIp);
@@ -57,7 +60,9 @@ public class LedgerController {
       get("", ((request, response) -> {
         response.type(ResponseTypeConstants.JSON);
         HashSet<IPAddress> ipAddressList = ledger.getIpAddresses();
-        LOGGER.log(Level.INFO, "GET /addr - Request IP - {0}:{1}", new String[]{request.ip(), String.valueOf(request.port())});
+        LOGGER.log(Level.INFO,
+            "GET /addr - Request IP - {0}:{1}",
+            new String[]{request.ip(), String.valueOf(request.port())});
         return new Gson().toJson(ipAddressList);
       }));
       post("", ((request, response) -> {
@@ -111,7 +116,8 @@ public class LedgerController {
           response.type(ResponseTypeConstants.JSON);
           try {
             UnsignedTransaction transaction = new Gson().fromJson(request.body(), UnsignedTransaction.class);
-            SignedTransaction signedTransaction = blockService.signTransaction(transaction, ledger.getKeyPair().getPrivate());
+            SignedTransaction signedTransaction = blockService.signTransaction(transaction,
+                ledger.getKeyPair().getPrivate());
             Block block = blockService.addTransaction(ledger, signedTransaction);// TODO mine block AFTER sending 200
             blockService.shareTransaction(ledger, signedTransaction);
             if (block != null) blockService.shareBlock(ledger, block);
