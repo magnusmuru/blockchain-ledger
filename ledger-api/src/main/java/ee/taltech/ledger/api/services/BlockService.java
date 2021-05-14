@@ -100,14 +100,9 @@ public class BlockService extends BaseService {
     return verified;
   }
 
-  public Block addTransaction(Ledger ledger, SignedTransaction transaction) {
-    if (transaction == null) return null;
+  public void addTransaction(Ledger ledger, SignedTransaction transaction) {
+    if (transaction == null) return;
     ledger.addTransaction(transaction);
-    if (ledger.getTransactions().size() >= Ledger.MAX_TRANSACTIONS_PER_BLOCK) {
-      LOGGER.log(Level.INFO, "Transaction limit for a single block reached, creating a new block.");
-      return createNewBlock(ledger);
-    }
-    return null;
   }
 
   public boolean isTransactionNotInPreviousBlocks(Ledger ledger, SignedTransaction transaction) {
@@ -124,17 +119,17 @@ public class BlockService extends BaseService {
             || tx.getTransaction().getTo().equals(transaction.getTransaction().getFrom()))
         .forEach(tx -> {
           if (tx.getTransaction().getFrom().equals(transaction.getTransaction().getFrom())) {
-            balance.updateAndGet(v -> v - transaction.getTransaction().getSum());
+            balance.updateAndGet(v -> v - tx.getTransaction().getSum());
           }
           if (tx.getTransaction().getTo().equals(transaction.getTransaction().getFrom())) {
-            balance.updateAndGet(v -> v + transaction.getTransaction().getSum());
+            balance.updateAndGet(v -> v + tx.getTransaction().getSum());
           }
         });
     return balance.get() >= transaction.getTransaction().getSum();
   }
 
 
-  private Block createNewBlock(Ledger ledger) {
+  public Block createNewBlock(Ledger ledger) {
     List<SignedTransaction> transactions = ledger.getTransactions().stream()
         .filter(this::verifyTransaction)
         .filter(transaction -> areAmountsOkay(ledger, transaction))
@@ -161,6 +156,12 @@ public class BlockService extends BaseService {
         .transactions(transactions)
         .merkleRoot(findMerkleRoot(ledger.getTransactions()))
         .build();
+
+    if (newBlock.getTransactions().size() == 1) {
+      ledger.clearTransactions();
+      LOGGER.log(Level.INFO, "No new transactions to add to the block, block creation stopped");
+      return null;
+    }
 
     findNonceAndHash(newBlock);
     ledger.addBlock(newBlock);

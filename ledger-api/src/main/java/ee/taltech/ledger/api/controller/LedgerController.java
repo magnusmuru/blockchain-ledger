@@ -118,9 +118,14 @@ public class LedgerController {
             UnsignedTransaction transaction = new Gson().fromJson(request.body(), UnsignedTransaction.class);
             SignedTransaction signedTransaction = blockService.signTransaction(transaction,
                 ledger.getKeyPair().getPrivate());
+            blockService.addTransaction(ledger, signedTransaction);// mine block AFTER sending 200?
             blockService.shareTransaction(ledger, signedTransaction);
-            Block block = blockService.addTransaction(ledger, signedTransaction);// mine block AFTER sending 200?
-            if (block != null) blockService.shareBlock(ledger, block);
+            Block block;
+            if (ledger.getTransactions().size() >= Ledger.MAX_TRANSACTIONS_PER_BLOCK) {
+              LOGGER.log(Level.INFO, "Transaction limit for a single block reached, creating a new block.");
+              block = blockService.createNewBlock(ledger);
+              if (block != null) blockService.shareBlock(ledger, block);
+            }
             response.status(200);
             return new Gson().toJsonTree(Status.builder()
                 .statusType("Success")
@@ -145,9 +150,14 @@ public class LedgerController {
                 && !ledger.getTransactions().contains(transaction);
             if (verified) {
               LOGGER.log(Level.INFO, "Verified a new transaction with signature {0}", transaction.getSignature());
+              Block block;
+              blockService.addTransaction(ledger, transaction);
               blockService.shareTransaction(ledger, transaction);
-              Block block = blockService.addTransaction(ledger, transaction);
-              if (block != null) blockService.shareBlock(ledger, block);
+              if (ledger.getTransactions().size() >= Ledger.MAX_TRANSACTIONS_PER_BLOCK) {
+                LOGGER.log(Level.INFO, "Transaction limit for a single block reached, creating a new block.");
+                block = blockService.createNewBlock(ledger);
+                if (block != null) blockService.shareBlock(ledger, block);
+              }
             }
             response.status(200);
             return new Gson().toJsonTree(Status.builder()
