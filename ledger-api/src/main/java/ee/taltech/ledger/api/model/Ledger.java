@@ -5,23 +5,30 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
+import java.security.KeyPair;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class Ledger {
+  public static final int MAX_TRANSACTIONS_PER_BLOCK = 7;
 
   @Setter
-  private List<IPAddress> ipAddresses = new ArrayList<>();
+  private HashSet<IPAddress> ipAddresses = new HashSet<>();
 
-  private final Map<String, Block> blocks = new HashMap<>();
+  @Setter
+  private KeyPair keyPair;
+
+  @Setter
+  private HashSet<SignedTransaction> transactions = new HashSet<>();
 
   @Setter
   private String lastHash;
+
+  private final Map<String, Block> blocks = new HashMap<>();
 
   public void addIPAddress(IPAddress address) {
     ipAddresses.add(address);
@@ -29,5 +36,13 @@ public class Ledger {
 
   public void addBlock(Block block) {
     blocks.put(block.getHash(), block);
+  }
+
+  public void addTransaction(SignedTransaction transaction) {
+    transactions.add(transaction);
+  }
+
+  public void clearTransactions() {
+    transactions.clear();
   }
 }

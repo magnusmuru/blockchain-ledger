@@ -22,7 +22,7 @@ public class BlockServiceTest {
     blockService = new BlockService();
     hashingService = new HashingService();
     ipAddress = new IPAddress("1.1.1.1", "9999");
-    block = new Block("123abc", 123, "msg", 1);
+    block = new Block();
     ledger = new Ledger();
   }
 
@@ -30,9 +30,9 @@ public class BlockServiceTest {
   public void testBlockChainLedgerFromBlockExistingHash() {
     ledger.addIPAddress(ipAddress);
     ledger.addBlock(block);
-    List<Block> blockChainList = blockService.blockChainLedgerFromBlock(ledger, block.getHash());
-    Assert.assertNotNull(blockChainList);
-    Block[] blockChain = blockChainList.toArray(new Block[0]);
+    Block blockChainBlock = blockService.getBlockByHash(ledger, block.getHash());
+    Assert.assertNotNull(blockChainBlock);
+    Block[] blockChain = new Block[]{blockChainBlock};
     Assert.assertArrayEquals(blockChain, new Block[]{block});
   }
 
@@ -40,13 +40,13 @@ public class BlockServiceTest {
   public void testBlockChainLedgerFromBlockNullHash() {
     ledger.addIPAddress(ipAddress);
     ledger.addBlock(block);
-    Assert.assertNull(blockService.blockChainLedgerFromBlock(ledger, null));
+    Assert.assertNull(blockService.getBlockByHash(ledger, null));
   }
 
   @Test
   public void testBlockChainLedgerFromBlockNoBlocks() {
     ledger.addIPAddress(ipAddress);
-    blockService.blockChainLedgerFromBlock(ledger, block.getHash());
-    Assert.assertNull(blockService.blockChainLedgerFromBlock(ledger, block.getHash()));
+    blockService.getBlockByHash(ledger, block.getHash());
+    Assert.assertNull(blockService.getBlockByHash(ledger, block.getHash()));
   }
 }
